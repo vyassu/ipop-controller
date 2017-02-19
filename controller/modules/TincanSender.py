@@ -137,12 +137,23 @@ class TincanSender(ControllerModule):
             add_routing["IPOP"]["Request"]["Routes"]        = []
             sourcemac = cbt.data["sourcemac"]
             for mac in cbt.data.get("destmac"):
-                add_routing["IPOP"]["Request"]["Routes"].append(mac+":"+sourcemac)
+                if mac != "0"*12 and mac != sourcemac:
+                    add_routing["IPOP"]["Request"]["Routes"]= [mac+":"+sourcemac]
 
-            log = "Routing Rule Inserted: {0}".format(str(add_routing["IPOP"]))
+                    log = "Routing Rule Inserted: {0}".format(str(add_routing["IPOP"]))
+                    self.registerCBT('Logger', 'debug', log)
+
+                    self.send_msg(json.dumps(add_routing))
+        elif cbt.action == "DO_REMOVE_ROUTING_RULES":
+            remove_routing = ipoplib.DELETE_ROUTING
+            remove_routing["IPOP"]["TransactionId"] = self.trans_counter
+            self.trans_counter += 1
+            remove_routing["IPOP"]["Request"]["InterfaceName"] = cbt.data["interface_name"]
+            remove_routing["IPOP"]["Request"]["Routes"]        = [ cbt.data["mac"] ]
+
+            log = "Routing Rule Removed: {0}".format(str(remove_routing["IPOP"]))
             self.registerCBT('Logger', 'debug', log)
-
-            self.send_msg(json.dumps(add_routing))
+            self.send_msg(json.dumps(remove_routing))
         else:
             log = '{0}: unrecognized CBT {1} received from {2}'\
                     .format(cbt.recipient, cbt.action, cbt.initiator)

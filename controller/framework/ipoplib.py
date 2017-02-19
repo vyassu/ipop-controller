@@ -209,9 +209,9 @@ DELETE_ROUTING = {
         "TransactionId" : 102001,
         "ControlType": "TincanRequest",
         "Request": {
-            "Command": "DeleteRoutes",
+            "Command": "RemoveRoutes",
             "InterfaceName" : "ipop_tap0",
-            "Routes" : ["00ffeeffee00:00ddeeddee00", "001133557799:224466880011"]
+            "Routes" : ["00ffeeffee00", "001133557799"]
             }
     }
 }

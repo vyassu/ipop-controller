@@ -1,9 +1,6 @@
 import json
-import sys
-import base64,binascii
 from controller.framework.ControllerModule import ControllerModule
 
-py_ver = sys.version_info[0]
 
 class TincanDispatcher(ControllerModule):
 
@@ -107,23 +104,13 @@ class TincanDispatcher(ControllerModule):
                     }
                     self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', msg)
 
-                else:
-                    log = "recv data from Tincan: {0}".format(str(tincan_resp_msg))
-                    #self.registerCBT('Logger', 'info', log)
-
             else:
-                request_msg = tincan_resp_msg
-                request_msg.pop("Response")
-                #request_msg["Request"] = "tincan"+ str(tincan_resp_msg["Request"]).split("_")[0]
-                '''
-                Do not blindly retry, the request will more than likely continue to fail.
-                This also isn't properly formatted - its mssing the header info
-                #self.registerCBT('TincanSender', 'DO_RETRY', request_msg)
-                '''
+                log = 'Tincan Failure:: '.format(cbt.data)
+                self.registerCBT('Logger', 'warning', log)
         else:
             req_peer_list = {
                 "interface_name": interface_name,
-                "type": "get_peer_list",
+                "type": "GetOnlinePeerList",
             }
             if req_operation == "ICC":
                 log = "recv data from Tincan for operation: {0}".format(tincan_resp_msg["Request"]["Command"])
@@ -131,14 +118,14 @@ class TincanDispatcher(ControllerModule):
                 iccmsg = json.loads(tincan_resp_msg["Request"]["Data"])
 
                 self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', req_peer_list)
-                self.registerCBT('Logger', 'info', "iccmsg::"+str(iccmsg))
+                self.registerCBT('Logger', 'debug', "ICC Message Received ::"+str(iccmsg))
 
                 if "msg" in iccmsg.keys():
                     iccmsg["msg"]["type"] = "remote"
                     iccmsg["msg"]["interface_name"] = tincan_resp_msg["Request"]["InterfaceName"]
                     if "message_type" in iccmsg["msg"]:
-                        if iccmsg["msg"]["message_type"] == "arpreply":
-                            self.registerCBT('Multicast', 'ARPReply', iccmsg)
+                        if iccmsg["msg"]["message_type"] == "SendMacDetails":
+                            self.registerCBT('Multicast', 'RECV_PEER_MAC_DETAILS', iccmsg)
                         elif iccmsg["msg"]["message_type"] == "multicast":
                             dataframe = iccmsg["msg"]["dataframe"]
                             if str(dataframe[24:28]) == "0800":
@@ -154,20 +141,19 @@ class TincanDispatcher(ControllerModule):
                     self.registerCBT('BaseTopologyManager', 'ICC_CONTROL', iccmsg)
 
             elif req_operation == "UpdateRoutes":
-            ### Changes done as part of Multicast ####
                 self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL',req_peer_list)
-                pkd = tincan_resp_msg["Request"]["Data"]
+                msg = tincan_resp_msg["Request"]["Data"]
                 interface_name = tincan_resp_msg["Request"]["InterfaceName"]
-                msg = pkd
 
-                #hexmsg = binascii.b2a_hex(msg)
                 datagram = {
                         "dataframe": msg,
                         "interface_name": interface_name,
                         "type": "local"
                 }
-                log = "recv data from Tincan::{0}".format(datagram)
-                self.registerCBT('Logger', 'info', log)
+
+                log = "UpdateRoutes Message ::{0}".format(datagram)
+                self.registerCBT('Logger', 'debug', log)
+
                 if str(msg[24:28]) == "0800":
                     #self.registerCBT("BaseTopologyManager", "TINCAN_PACKET", datagram)
                     self.registerCBT('Multicast', 'IP_PACKET', datagram)
@@ -178,3 +164,7 @@ class TincanDispatcher(ControllerModule):
                 else:
                     datagram["message_type"] = "broadcast"
                     self.registerCBT('BroadCastController', 'broadcast', datagram)
+            else:
+                log = '{0}: unrecognized Data {1} received from {2}. Data:::{3}' \
+                    .format(cbt.recipient, cbt.action, cbt.initiator,cbt.data)
+                self.registerCBT('Logger', 'warning', log)

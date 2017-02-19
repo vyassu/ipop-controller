@@ -69,7 +69,7 @@ class BroadCastForwarder(ControllerModule):
                                      "Duplicate Message !!!")
         else:
             self.registerCBT('Logger', 'warning', "No Available peerlist!!")
-            self.registerCBT('BaseTopologyManager', 'SEND_PEER_LIST', {"interface_name":data["interface_name"]})
+            self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', {"interface_name":data["interface_name"],"type": "GetOnlinePeerList"})
 
     def forwardMessage(self,msg_frame,init_id,suc_id,peer,peer_list,time,datype,interface_name):
          #self.registerCBT('Logger','info',msg_frame)
@@ -142,12 +142,7 @@ class BroadCastForwarder(ControllerModule):
         self.receive_count += 1
         self.registerCBT('Logger', 'debug', '@@@ Passing the message to itself @@@')
         messagedetails = {"send": self.send_count, "receive": self.receive_count, "interface_name": interface_name}
-        self.registerCBT('BaseTopologyManager', 'Send_Receive_Details', messagedetails)
-        '''
-        if messagetype == "multicast":
-            self.registerCBT('Logger', 'debug', '@@@ Passing the message Multicast table handler')
-            self.registerCBT('Multicast', 'MULTICAST_PKT', data)
-        '''
+        #self.registerCBT('BaseTopologyManager', 'Send_Receive_Details', messagedetails)
         self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', data)
 
 
