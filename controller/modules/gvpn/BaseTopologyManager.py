@@ -371,7 +371,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
         if len(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid]) ==0:
             return
-        
+
         nxt_mac = list(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid])[0]
 
         message = {
@@ -511,7 +511,10 @@ class BaseTopologyManager(ControllerModule,CFX):
                         if uid in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].remove(msg["uid"])
                         if uid in list(interface_details["uid_mac_table"].keys()):
+                            mac_list = interface_details["uid_mac_table"][uid]
                             del interface_details["uid_mac_table"][uid]
+                            for mac in mac_list:
+                                del interface_details["mac_uid_table"][mac]
                         return
                     else:
                         if msg["uid"] in interface_details["online_peer_uid"]:
@@ -554,6 +557,13 @@ class BaseTopologyManager(ControllerModule,CFX):
                     # Check whether mapping exists
                     if mac not in list(interface_details["mac_uid_table"].keys()) and mac != "":
                         interface_details["uid_mac_table"][uid].append(mac)
+                        if location == "remote":
+                            message = {
+                                "interface_name": interface_name,
+                                "dst_uid": uid,
+                                "dst_mac": [mac]
+                            }
+                            self.insertRoutingRule(message)
                     else:
                         deletepeermac ={
                             "interface_name": interface_name,
@@ -562,17 +572,16 @@ class BaseTopologyManager(ControllerModule,CFX):
                         olduid = interface_details["mac_uid_table"][mac]
                         #check whether the previous mapping is different from current
                         if olduid != uid and location == "remote" and olduid in interface_details["uid_mac_table"].keys() :
-                            interface_details["uid_mac_table"][olduid].remove(olduid)
-                            self.registerCBT("TincanSender","DO_REMOVE_ROUTING_RULES",deletepeermac)
+                            if interface_details["uid_mac_table"][olduid].count(mac)>0:
+                                interface_details["uid_mac_table"][olduid].remove(mac)
+                                self.registerCBT("TincanSender","DO_REMOVE_ROUTING_RULES",deletepeermac)
+                                message = {
+                                    "interface_name": interface_name,
+                                    "dst_uid": uid,
+                                    "dst_mac": [mac]
+                                }
+                                self.insertRoutingRule(message)
 
-                # Add MAC ID in the routing table
-                if location == "remote":
-                    message = {
-                            "interface_name": interface_name,
-                            "dst_uid": uid,
-                            "dst_mac": msg["uid_mac_table"][uid]
-                    }
-                    self.insertRoutingRule(message)
                 self.ipop_interface_details[interface_name]["mac_uid_table"].update(msg["mac_uid_table"])
 
             elif msg_type == "GetOnlinePeerList":
