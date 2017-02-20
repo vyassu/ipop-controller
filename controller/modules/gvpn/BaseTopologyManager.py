@@ -329,7 +329,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
             # packet is intended specifically to the destination node
         if fwd_type == "exact":
-            print("exact", nxt_uid, uid, dst_uid)
+            #print("exact", nxt_uid, uid, dst_uid)
             # this is the destination uid
             if dst_uid == uid:  # if self.uid == dst_uid:
                  #self.send_msg_icc(nxt_uid, msg, interface_name)
@@ -341,7 +341,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
         # packet is intended to the node closest to the designated node
         elif fwd_type == "closest":
-            print("closest",nxt_uid, uid)  # this is the destination uid or the node closest to it
+            #print("closest",nxt_uid, uid)  # this is the destination uid or the node closest to it
             if nxt_uid == uid:  # if self.uid == nxt_uid:
                 #self.send_msg_icc(nxt_uid, msg, interface_name)
                 return True
@@ -369,6 +369,9 @@ class BaseTopologyManager(ControllerModule,CFX):
         if dst_uid == uid:
             return
 
+        if len(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid]) ==0:
+            return
+        
         nxt_mac = list(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid])[0]
 
         message = {
