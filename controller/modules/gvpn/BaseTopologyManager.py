@@ -516,10 +516,11 @@ class BaseTopologyManager(ControllerModule,CFX):
                             for mac in mac_list:
                                 del interface_details["mac_uid_table"][mac]
                         return
+                    '''
                     else:
                         if msg["uid"] in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].remove(uid)
-
+                    '''
                     # update peer state
                     interface_details["peers"][uid]                 = msg
                     interface_details["peers"][uid]["ttl"]          = ttl
@@ -898,8 +899,8 @@ class BaseTopologyManager(ControllerModule,CFX):
 
                     peer_list = list(self.ipop_interface_details[interface_name]["peers"].keys())
                     for uid in peer_list:
-                        msg["uid"] = uid
-                        self.registerCBT('TincanSender', 'DO_GET_STATE', msg)
+                        message  = {"interface_name": interface_name, "uid": uid}
+                        self.registerCBT('TincanSender', 'DO_GET_STATE', message)
 
                         # self.registerCBT('TincanSender', 'DO_ECHO', '')
 

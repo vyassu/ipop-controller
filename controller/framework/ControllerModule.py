@@ -78,7 +78,7 @@ class ControllerModule(object):
 
     def retrievePendingCBT(self,cbt):
         if self.pendingCBT.get(str(cbt.uid) + " " + str(cbt.action) + " " + str(cbt.initiator)) != None:
-            return self.pendingCBT.put(str(cbt.uid) + " " + str(cbt.action) + " " + str(cbt.initiator))
+            return self.pendingCBT.pop(str(cbt.uid) + " " + str(cbt.action) + " " + str(cbt.initiator))
         return None
 
     def insertPendingCBT(self,cbt):

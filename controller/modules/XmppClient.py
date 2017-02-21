@@ -316,6 +316,7 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
                     self.registerCBT(pendingcbt.initiator, "peer_list", msg)
                 else:
                     self.registerCBT(cbt.initiator,"peer_list",msg)
+                self.update_peerlist = False
             else:
                 self.insertPendingCBT(cbt)
 

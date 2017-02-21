@@ -20,7 +20,9 @@ import time
 class CFX(object):
 
     def __init__(self):
+        self.CONFIG = {}
         self.parse_config()
+
         #fxlib.CONFIG = self.CONFIG
         self.transaction_counter=0
         # CFxHandleDict is a dict containing the references to
@@ -36,6 +38,7 @@ class CFX(object):
                 ip4 = self.vnetdetails[k]["ip4"]
                 self.vnetdetails[k]["uid"] = fxlib.gen_uid(ip4)
                 self.vnetdetails[k]["ip6"] = fxlib.gen_ip6(self.vnetdetails[k]["uid"])
+                '''
                 uid_ip4_table = {}
                 ip4_uid_table = {}
                 parts = ip4.split(".")
@@ -50,6 +53,7 @@ class CFX(object):
                 self.vnetdetails[k]["ip4_uid_table"] = ip4_uid_table
             #self.ip4 = self.CONFIG['CFx']["ip4"]
             #self.uid = fxlib.gen_uid(self.ip4)  # SHA-1 Hash
+            '''
         elif self.vpn_type == 'SocialVPN':
             self.ip4 = self.CONFIG['AddressMapper']["ip4"]
             self.uid = self.CONFIG['CFx']['local_uid']
@@ -82,6 +86,7 @@ class CFX(object):
         # deallocate CBT (use python's automatic garbage collector)
         pass
 
+
     def initialize(self,):
         # issue tincan API calls for controller initialization
 
@@ -95,7 +100,7 @@ class CFX(object):
         fxlib.send_msg(self.sock, json.dumps(ep))
         time.sleep(1)
 
-        print("Setting logging level")
+        print("Setting Tincan logging level")
         self.transaction_counter += 1
         lgl = ipoplib.LOGLVEL
         lgl["IPOP"]["Request"]["Value"] = self.CONFIG["Tincan"]["LogLevel"]
@@ -104,9 +109,9 @@ class CFX(object):
         time.sleep(1)
 
         for i in range(len(self.vnetdetails)):
-            print ("Creating VNET")
             vn = ipoplib.VNET
             self.transaction_counter += 1
+            print("Create VNET")
             vn["IPOP"]["TransactionId"] = self.transaction_counter
             vn["IPOP"]["Request"]["LocalUID"]       = self.vnetdetails[i]["uid"]
             vn["IPOP"]["Request"]["LocalVirtIP6"]   = self.vnetdetails[i]["ip6"]
@@ -119,26 +124,25 @@ class CFX(object):
             vn["IPOP"]["Request"]["TurnUser"]       = self.CONFIG["Tincan"]["turn"][0]["user"]
             vn["IPOP"]["Request"]["TurnPass"]       = self.CONFIG["Tincan"]["turn"][0]["pass"]
 
-            if "LocalNetMask4" in self.CONFIG["Tincan"]:
-                vn["IPOP"]["Request"]["LocalNetMask4"] = self.CONFIG["Tincan"]["LocalNetMask4"]
+            if "IP4Mask" in self.vnetdetails[i]:
+                vn["IPOP"]["Request"]["LocalPrefix4"] = self.CONFIG["Tincan"]["vnets"][i]["IP4Mask"]
 
-            if "LocalNetMask6" in self.CONFIG["Tincan"]:
-                vn["IPOP"]["Request"]["LocalNetMask4"] = self.CONFIG["Tincan"]["LocalNetMask6"]
+            if "IP6Mask" in self.vnetdetails[i]:
+                vn["IPOP"]["Request"]["LocalPrefix6"] = self.CONFIG["Tincan"]["vnets"][i]["IP6Mask"]
 
             if self.vnetdetails[i]["switchmode"] == 1:
                 vn["IPOP"]["Request"]["SwitchModeEnabled"]         = True
             else:
                 vn["IPOP"]["Request"]["SwitchModeEnabled"]         = False
 
-            if "trim_enabled" in self.CONFIG["Tincan"]:
-                vn["IPOP"]["Request"]["AutoTrimEnabled"]           = self.CONFIG["Tincan"]["trim_enabled"]
+            if "trim_enabled" in self.vnetdetails[i]:
+                vn["IPOP"]["Request"]["AutoTrimEnabled"]           = self.CONFIG["Tincan"][i]["trim_enabled"]
 
             if self.vpn_type == "GroupVPN":
                 vn["IPOP"]["Request"]["AddressTranslationEnabled"] = False
             else:
                 vn["IPOP"]["Request"]["AddressTranslationEnabled"] = True
 
-            print(json.dumps(vn))
             fxlib.send_msg(self.sock,json.dumps(vn))
 
             print("net ignore list")
@@ -148,7 +152,7 @@ class CFX(object):
                 net_ignore_list["IPOP"]["TransactionId"]       = self.transaction_counter
                 net_ignore_list["IPOP"]["network_ignore_list"] = self.vnetdetails[i]["network_ignore_list"]
                 net_ignore_list["IPOP"]["InterfaceName"]       = self.vnetdetails[i]["ipoptap_name"]
-                fxlib.send_msg(self.sock, json.dumps(net_ignore_list))                #self.sock.sendto(bytes((igl).encode('utf-8')), dest)
+                fxlib.send_msg(self.sock, json.dumps(net_ignore_list))
             time.sleep(1)
 
             print("GET NODE STATE")
