@@ -327,7 +327,7 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
 
                 msg = {
                     "interface_name": self.interface_name,
-                    "peer_list"     : self.uid_jid.keys()
+                    "peer_list"     : list(self.uid_jid.keys())
                 }
                 pendingcbt = self.retrievePendingCBT(cbt)
                 if pendingcbt!= None:
