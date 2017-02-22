@@ -90,6 +90,8 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         # Register event handler for session start
         self.add_event_handler("session_start", self.start)
 
+        self.add_event_handler("roster_update", self.deletepeerjid)
+
         # populate uid_ip4_table and ip4_uid_table with all UID and IPv4
         # mappings within the /16 subnet
 
@@ -117,6 +119,25 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
             self.xmpp_peers[presence_sender] = [time.time(), True]
             self.log("presence received from {0}".format(presence_sender), severity=log_level)
 
+    def deletepeerjid(self,message):
+        val = ""
+
+        print("Message"+str(message.keys()))
+        print("Message" + str(message["roster"]["items"]))
+        roster_items = dict(message["roster"]["items"])
+        for nodejid,data in message["roster"]["items"].items():
+            if data["subscription"] == "remove":
+                print("im here")
+                for ele in self.jid_uid.keys():
+                    if ele.find(nodejid) !=-1:
+                        node_uid = self.jid_uid[ele]
+                        del self.jid_uid[ele]
+                        del self.xmpp_peers[ele]
+                        del self.uid_jid[node_uid]
+                        self.update_peerlist = True
+                        self.registerCBT("Logger","info","{0} has been deleted from the roster.".format(node_uid))
+                        self.registerCBT("ConnectionManager","remove_connection",\
+                                         {"interface_name":self.interface_name,"uid":node_uid})
 
     # This handler method listens for the matched messages on tehj xmpp stream,
     # extracts the setup and payload and takes suitable action depending on the

@@ -150,8 +150,8 @@ class CFX(object):
                 net_ignore_list = ipoplib.IGNORE
                 self.transaction_counter += 1
                 net_ignore_list["IPOP"]["TransactionId"]       = self.transaction_counter
-                net_ignore_list["IPOP"]["network_ignore_list"] = self.vnetdetails[i]["network_ignore_list"]
-                net_ignore_list["IPOP"]["InterfaceName"]       = self.vnetdetails[i]["ipoptap_name"]
+                net_ignore_list["IPOP"]["Request"]["IgnoredNetInterfaces"] = self.vnetdetails[i]["network_ignore_list"]
+                net_ignore_list["IPOP"]["Request"]["InterfaceName"]       = self.vnetdetails[i]["ipoptap_name"]
                 fxlib.send_msg(self.sock, json.dumps(net_ignore_list))
             time.sleep(1)
 

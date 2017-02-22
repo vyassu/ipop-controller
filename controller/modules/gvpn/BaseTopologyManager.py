@@ -192,7 +192,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                                         uid)
                         self.registerCBT('Logger', 'warning', log_msg)
                         #self.remove_connection(uid, interface_name)
-                        if uid in self.connection_details[interface_name]["peers"]:
+                        if uid in self.ipop_interface_details[interface_name]["peers"]:
                             self.ipop_interface_details[interface_name]["peers"].pop(uid)
                             self.registerCBT("ConnectionManager","remove_connection",remove_link_msg)
             # if node was in any other state:
@@ -205,7 +205,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     log_msg = "AIL: Giving up, remove_connection from {0}".format(uid)
                     self.registerCBT('Logger', 'info', log_msg)
                     #self.remove_connection(uid, interface_name)
-                    if uid in self.connection_details[interface_name]["peers"]:
+                    if uid in self.ipop_interface_details[interface_name]["peers"]:
                         self.ipop_interface_details[interface_name]["peers"].pop(uid)
                         self.registerCBT("ConnectionManager", "remove_connection", remove_link_msg)
             # recvd con_req and sender is not in peers list - common case
@@ -257,7 +257,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', "Nodes:" + str(nodes))
         self.registerCBT('Logger', 'info', "Peer Nodes:" + str(interface_details["peers"]))
         # link to the closest <num_successors> nodes (if not already linked)
-        for node in nodes[0:min(len(nodes), self.CMConfig["num_successors"])]:
+        for node in nodes[0:min(len(interface_details["online_peer_uid"]), self.CMConfig["num_successors"])]:
             if node not in interface_details["online_peer_uid"]:
                 self.add_outbound_link("successor", node, None, interface_name)
 
@@ -396,12 +396,12 @@ class BaseTopologyManager(ControllerModule,CFX):
             msg_type = msg["msg_type"]
             uid = msg.get("uid")
             if msg_type == "add_peer":
-                self.registerCBT('Logger', 'debug', "inside add peer **********")
                 self.ipop_interface_details[interface_name]["peers"][uid]={
-                    "uid": uid,
-                    "ttl": time.time()+self.CMConfig["ttl_link_initial"],
-                    "con_status": "offline"
-                }
+                        "uid": uid,
+                        "ttl": time.time()+self.CMConfig["ttl_link_initial"],
+                        "con_status": "offline"
+                    }
+                self.registerCBT('Logger', 'debug', "inside add peer **********")
                 #self.ipop_interface_details[interface_name]["peer_uids"][uid] = 1
             elif msg_type == "remove_peer":
                 self.registerCBT('Logger', 'debug',"inside remove peer************")
@@ -516,11 +516,9 @@ class BaseTopologyManager(ControllerModule,CFX):
                             for mac in mac_list:
                                 del interface_details["mac_uid_table"][mac]
                         return
-                    '''
                     else:
                         if msg["uid"] in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].remove(uid)
-                    '''
                     # update peer state
                     interface_details["peers"][uid]                 = msg
                     interface_details["peers"][uid]["ttl"]          = ttl
@@ -575,7 +573,8 @@ class BaseTopologyManager(ControllerModule,CFX):
                         if olduid != uid and location == "remote" and olduid in interface_details["uid_mac_table"].keys() :
                             if interface_details["uid_mac_table"][olduid].count(mac)>0:
                                 interface_details["uid_mac_table"][olduid].remove(mac)
-                                self.registerCBT("TincanSender","DO_REMOVE_ROUTING_RULES",deletepeermac)
+                                interface_details["uid_mac_table"][uid].append(mac)
+                                #self.registerCBT("TincanSender","DO_REMOVE_ROUTING_RULES",deletepeermac)
                                 message = {
                                     "interface_name": interface_name,
                                     "dst_uid": uid,

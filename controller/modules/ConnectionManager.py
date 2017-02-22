@@ -292,6 +292,7 @@ class ConnectionManager(ControllerModule):
             msg = cbt.data
             self.find_chords(msg["interface_name"], msg["uid"])
 
+
         elif cbt.action == "get_visualizer_data":
             successors,chords,on_demands = [],[],[]
             for interface_name in self.connection_details.keys():
