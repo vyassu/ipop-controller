@@ -230,6 +230,11 @@ class ConnectionManager(ControllerModule):
         links = self.connection_details[interface_name]
 
         successors = list(sorted(links["successor"].keys()))
+
+        #Allow the least node in the network to have the as many connections as required to maintain a fully connected
+        #Ring Topology
+        if min([current_uid] + successors) == current_uid:
+            return
         if max([current_uid] + successors) != current_uid:
             while successors[0] < current_uid:
                 successors.append(successors.pop(0))
@@ -240,7 +245,7 @@ class ConnectionManager(ControllerModule):
         for successor in successors:
             if self.linked(successor,interface_name):
                 num_linked_successors += 1
-                if num_linked_successors > self.CMConfig["num_successors"]:
+                if num_linked_successors > (2*int(self.CMConfig["num_successors"])):
                     self.remove_link("successor", successor,interface_name)
 
     def processCBT(self, cbt):

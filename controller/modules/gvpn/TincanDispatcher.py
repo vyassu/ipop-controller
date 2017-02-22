@@ -99,10 +99,10 @@ class TincanDispatcher(ControllerModule):
                             "cas": tincan_resp_msg["Request"]["PeerInfo"]["CAS"],
                             "con_type": tincan_resp_msg["Request"]["PeerInfo"]["con_type"]
                         },
-                        "status": "online",
+                        "status": "offline",
                         "interface_name": interface_name
                     }
-                    self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', msg)
+                    #self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', msg)
 
             else:
                 log = 'Tincan Failure:: '.format(cbt.data)

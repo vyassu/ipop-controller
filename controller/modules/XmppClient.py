@@ -120,14 +120,8 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
             self.log("presence received from {0}".format(presence_sender), severity=log_level)
 
     def deletepeerjid(self,message):
-        val = ""
-
-        print("Message"+str(message.keys()))
-        print("Message" + str(message["roster"]["items"]))
-        roster_items = dict(message["roster"]["items"])
         for nodejid,data in message["roster"]["items"].items():
             if data["subscription"] == "remove":
-                print("im here")
                 for ele in self.jid_uid.keys():
                     if ele.find(nodejid) !=-1:
                         node_uid = self.jid_uid[ele]
@@ -162,8 +156,7 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
             try:
                 peer_uid, target_uid = payload.split("#")
                 if peer_uid != self.uid:
-                    print("peer list:::"+str(self.uid_jid))
-                    if self.xmpp_peers.get(peer_uid)== None:
+                    if peer_uid not in self.uid_jid.keys():
                         self.update_peerlist= True
                     # update last known advt reception time in xmpp_peers
                     self.xmpp_peers[sender_jid][0] = time.time()
@@ -197,6 +190,8 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         if target_uid == self.uid:
             sender_uid, recvd_data = payload.split("#")
             # If I recvd XMPP msg from this peer, I should record his UID-JID & JID-UID
+            if sender_uid not in self.uid_jid.keys():
+                self.update_peerlist = True
             self.uid_jid[sender_uid] = sender_jid
             if (msg_type == "con_req"):
                 msg = {}
@@ -326,8 +321,10 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
                 msg_payload = self.uid + "#" + data
                 self.sendMsg(peer_jid, setup_load, msg_payload)
                 self.log("sent ping to {0}".format(self.uid_jid[peer_uid]), severity=log_level)
-        elif cbt.action == "GET_PEER":
+        elif cbt.action == "GetXMPPPeer":
+            self.log("Inside Get peer list"+str(self.update_peerlist))
             if self.update_peerlist == True:
+
                 msg = {
                     "interface_name": self.interface_name,
                     "peer_list"     : self.uid_jid.keys()
@@ -337,6 +334,7 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
                     self.registerCBT(pendingcbt.initiator, "peer_list", msg)
                 else:
                     self.registerCBT(cbt.initiator,"peer_list",msg)
+                self.log("XMPP Peer List:::" + str(msg),severity="debug")
                 self.update_peerlist = False
             else:
                 self.insertPendingCBT(cbt)

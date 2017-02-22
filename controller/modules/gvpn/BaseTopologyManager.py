@@ -42,7 +42,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
     def initialize(self):
         for interface_name in self.ipop_interface_details.keys():
-            self.registerCBT(self.ipop_interface_details[interface_name]["xmpp_client_code"],"GET_PEER","")
+            self.registerCBT(self.ipop_interface_details[interface_name]["xmpp_client_code"],"GetXMPPPeer","")
         self.registerCBT('Logger', 'info', "{0} Loaded".format(self.ModuleName))
 
     def send_msg_srv(self, msg_type, uid, msg, interface_name):
@@ -257,7 +257,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', "Nodes:" + str(nodes))
         self.registerCBT('Logger', 'info', "Peer Nodes:" + str(interface_details["peers"]))
         # link to the closest <num_successors> nodes (if not already linked)
-        for node in nodes[0:min(len(interface_details["online_peer_uid"]), self.CMConfig["num_successors"])]:
+        for node in nodes[0:min(len(nodes), self.CMConfig["num_successors"])]:
             if node not in interface_details["online_peer_uid"]:
                 self.add_outbound_link("successor", node, None, interface_name)
 
@@ -384,8 +384,12 @@ class BaseTopologyManager(ControllerModule,CFX):
     def processCBT(self, cbt):
         msg = cbt.data
         if cbt.action == "peer_list":
-            self.ipop_interface_details[msg.get("interface_name")]["discovered_nodes_srv"] = msg.get("peer_list")
-            print("PEER LIST::"+str(self.ipop_interface_details[msg.get("interface_name")]["discovered_nodes_srv"]))
+            interface_name = msg.get("interface_name")
+            if self.ipop_interface_details[interface_name]["p2p_state"] !="Connected":
+                self.ipop_interface_details[interface_name]["discovered_nodes_srv"] = msg.get("peer_list")
+            else:
+                self.ipop_interface_details[interface_name]["discovered_nodes"]+=msg.get("peer_list")
+                self.ipop_interface_details[interface_name]["discovered_nodes"]= list(set(self.ipop_interface_details[interface_name]["discovered_nodes"]))
 
         elif cbt.action == "forward_msg":
             msg = cbt.data
@@ -420,13 +424,15 @@ class BaseTopologyManager(ControllerModule,CFX):
             msg = cbt.data
             msg_type = msg.get("type", None)
             interface_name = msg["interface_name"]
+            interface_details = self.ipop_interface_details[interface_name]
+
             # handle connection request
             if msg_type == "con_req":
                 msg["data"] = json.loads(msg["data"])
                 uid  = msg["uid"]
                 log = "recv con_req ({0}): {1}".format(msg["data"]["con_type"], uid)
                 self.registerCBT('Logger', 'debug', log)
-                if uid < self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]:
+                if uid < interface_details["ipop_state"]["_uid"]:
                     self.registerCBT('TincanSender', 'DO_GET_CAS', msg)
 
             # handle connection acknowledgement
@@ -434,28 +440,31 @@ class BaseTopologyManager(ControllerModule,CFX):
                 msg["data"] = json.loads(msg["data"])
                 log = "recv con_ack ({0}): {1}".format(msg["data"]["con_type"], msg["uid"])
                 self.registerCBT('Logger', 'debug', log)
-                #self.create_connection(msg["uid"], msg["data"], interface_name)
-                #self.ipop_interface_details[interface_name]["peer_uids"][msg["uid"]] = 1
 
             # handle ping message
             elif msg_type == "ping":
                 # add source node to the list of discovered nodes
-                self.ipop_interface_details[interface_name]["discovered_nodes"].append(msg["uid"])
-                self.ipop_interface_details[interface_name]["discovered_nodes"] = list(
-                    set(self.ipop_interface_details[interface_name]["discovered_nodes"]))
+                interface_details["discovered_nodes"].append(msg["uid"])
+                interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
+
+                if interface_details["p2p_state"] == "searching":
+                    interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
+
                 # reply with a ping response message
-                self.send_msg_srv("ping_resp", msg["uid"], self.ipop_interface_details[interface_name]["ipop_state"]["_uid"],\
-                                  interface_name)
+                self.send_msg_srv("ping_resp", msg["uid"], interface_details["ipop_state"]["_uid"],interface_name)
                 log = "recv ping: {0}".format(msg["uid"])
                 self.registerCBT('Logger', 'debug', log)
 
             # handle ping response
             elif msg_type == "ping_resp":
                 # add source node to the list of discovered nodes
-                self.ipop_interface_details[interface_name]["discovered_nodes"].append(msg["uid"])
-                self.ipop_interface_details[interface_name]["discovered_nodes"] = list(
-                    set(self.ipop_interface_details[interface_name]["discovered_nodes"]))
-                log = "recv ping_resp: {0}".format(msg["uid"])
+                interface_details["discovered_nodes"].append(msg["uid"])
+                interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
+
+                if interface_details["p2p_state"] == "searching":
+                    interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
+
+                log = "recv ping_resp from {0}".format(msg["uid"])
                 self.registerCBT('Logger', 'debug', log)
 
             # handle peer_con_resp sent by peer
@@ -463,13 +472,6 @@ class BaseTopologyManager(ControllerModule,CFX):
                 log = "recv con_resp: {0}".format(msg["uid"])
                 self.registerCBT('Logger', 'debug', log)
 
-            # Handle xmpp advertisements
-            elif msg_type == "xmpp_advertisement":
-                interface_details = self.ipop_interface_details[interface_name]
-                interface_details["discovered_nodes_srv"].append(msg["data"])
-                interface_details["discovered_nodes_srv"] = list(set(interface_details["discovered_nodes_srv"]))
-                log = "recv xmpp_advt: {0}".format(msg["uid"])
-                self.registerCBT('Logger', 'debug', log)
             else:
                 log = '{0}: unrecognized CBT message {1} received from {2}.Data:: {3}' \
                     .format(cbt.recipient, cbt.action, cbt.initiator,cbt.data)
@@ -612,6 +614,9 @@ class BaseTopologyManager(ControllerModule,CFX):
             if msg_type == "advertise":
                 self.ipop_interface_details[interface_name]["discovered_nodes"] \
                         = list(set(self.ipop_interface_details[interface_name]["discovered_nodes"] + msg["peer_list"]))
+                localuid = self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]
+                if localuid in self.ipop_interface_details[interface_name]["discovered_nodes"]:
+                    self.ipop_interface_details[interface_name]["discovered_nodes"].remove(localuid)
 
                 log = "recv advertisement: {0}".format(msg["src_uid"])
                 self.registerCBT('Logger', 'info', log)
@@ -752,7 +757,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', log)
 
             interface_details = self.ipop_interface_details[interface_name]
-            self.registerCBT(interface_details["xmpp_client_code"], "GET_PEER", "")
+            self.registerCBT(interface_details["xmpp_client_code"], "GetXMPPPeer", "")
 
             if interface_details["p2p_state"] == "started":
                 if not interface_details["ipop_state"]:
@@ -893,8 +898,9 @@ class BaseTopologyManager(ControllerModule,CFX):
                         self.registerCBT('Logger', 'error', "Exception in MT BTM timer: " + str(error))
 
                     # update local state and update the list of discovered nodes (from XMPP)
-                    msg = {"interface_name": interface_name, "uid": ""}
-                    self.registerCBT('TincanSender', 'DO_GET_STATE', msg)
+                    if self.ipop_interface_details[interface_name]["p2p_state"] == "searching":
+                        msg = {"interface_name": interface_name, "uid": ""}
+                        self.registerCBT('TincanSender', 'DO_GET_STATE', msg)
 
                     peer_list = list(self.ipop_interface_details[interface_name]["peers"].keys())
                     for uid in peer_list:

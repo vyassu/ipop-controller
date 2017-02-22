@@ -23,7 +23,7 @@ LOGLVEL = {
         "ControlType": "TincanRequest",
         "Request": {
           "Command" : "SetLoggingLevel",
-          "Value" : "INFO",
+          "LogLevel" : "INFO",
         }
     }
 }
