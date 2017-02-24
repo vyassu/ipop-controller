@@ -5,7 +5,7 @@ py_ver = sys.version_info[0]
 ENDPT = {
     "IPOP": {
         "ProtocolVersion": 4,
-        "TransactionId" : 100001,
+        "TransactionId" : 0,
         "ControlType": "TincanRequest",
         "Request": {
             "Command": "CreateCtrlRespLink",
@@ -19,7 +19,7 @@ ENDPT = {
 LOGLVEL = {
     "IPOP": {
         "ProtocolVersion": 4,
-        "TransactionId" : 10008,
+        "TransactionId" : 0,
         "ControlType": "TincanRequest",
         "Request": {
           "Command" : "SetLoggingLevel",
@@ -30,7 +30,7 @@ LOGLVEL = {
 LSTATE = {
     "IPOP": {
         "ProtocolVersion": 4,
-        "TransactionId" : 100002,
+        "TransactionId" : 0,
         "ControlType": "TincanRequest",
         "Request": {
           "Command": "QueryNodeInfo",
@@ -42,7 +42,7 @@ LSTATE = {
 ECHO = {
   "IPOP": {
       "ProtocolVersion": 4,
-      "TransactionId" : 100003,
+      "TransactionId" : 0,
       "ControlType": "TincanRequest",
       "Request": {
         "Command": "Echo",
@@ -55,25 +55,25 @@ VNET = {
     "IPOP": {
         "ProtocolVersion": 4,
         "ControlType": "TincanRequest",
-        "TransactionId" : 100004,
+        "TransactionId" : 0,
         "Request": {
           "Command" : "CreateVnet",
           "InterfaceName" : "ipop_tap0",
           "Description" : "My Devices",
           "LocalVirtIP4" : "",
-          "LocalPrefix4" : 16,
-          "LocalPrefix6" : 64,
-          "MTU4" : 1200,
-          "MTU6" : 1200,
+          "LocalPrefix4" : "",
+          "LocalPrefix6" : "",
+          "MTU4" : "",
+          "MTU6" : "",
           "LocalUID" : "",
           "LocalVirtIP6" : "",
-          "StunAddress": "stun1.l.google.com:19302",
-              "TurnAddress" : "128.227.73.142:19302",
-          "TurnUser" : "turn1",
-          "TurnPass" : "ShrR4754shcTr",
-          "SwitchModeEnabled" : True,
+          "StunAddress": "",
+          "TurnAddress" : "",
+          "TurnUser" : "",
+          "TurnPass" : "",
+          "L2TunnelEnabled" : True,
           "AutoTrimEnabled" : False,
-          "AddressTranslationEnabled" : False
+          "IPMappingEnabled" : False
         }
     }
 }
@@ -198,7 +198,7 @@ ADD_ROUTING = {
         "Request": {
             "Command": "AddRoutes",
             "InterfaceName" : "ipop_tap0",
-            "Routes" : ["00ffeeffee00:00ddeeddee00", "001133557799:224466880011"]
+            "Routes" : []
             }
         }
 }
@@ -211,7 +211,7 @@ DELETE_ROUTING = {
         "Request": {
             "Command": "RemoveRoutes",
             "InterfaceName" : "ipop_tap0",
-            "Routes" : ["00ffeeffee00", "001133557799"]
+            "Routes" : []
             }
     }
 }
@@ -295,11 +295,4 @@ def gen_ip4(uid, peer_map, ip4):
             return peer_map[uid]
     del peer_map[uid]
     raise OverflowError("too many peers, out of IPv4 addresses")
-'''
-def make_remote_call(sock, dest_addr, dest_port, m_type, payload, **params):
-    dest = (dest_addr, dest_port)
-    if m_type == tincan_request:
-        return sock.sendto(ipop_ver + m_type + json.dumps(params), dest)
-    else:
-        return sock.sendto(ipop_ver + m_type + payload, dest)
-'''
+

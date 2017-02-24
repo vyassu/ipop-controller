@@ -10,33 +10,33 @@ class BaseTopologyManager(ControllerModule,CFX):
         self.CMConfig = paramDict
         self.interval_counter = 0
         self.cv_interval = 5
-        self.use_visualizer = False
         self.ipop_interface_details={}
         self.sendcount = ""
         self.receivecount = ""
 
-        self.max_num_links = self.CMConfig["num_successors"] + \
-                             self.CMConfig["num_chords"] + \
-                             self.CMConfig["num_on_demand"] + \
-                             self.CMConfig["num_inbound"]
+        self.max_num_links = self.CMConfig["NumberOfSuccessors"] + \
+                             self.CMConfig["NumberOfChords"] + \
+                             self.CMConfig["NumberOfOnDemand"] + \
+                             self.CMConfig["NumberOfInbound"]
         
-        self.maxretries = self.CMConfig["max_conn_retries"]
+        self.maxretries = self.CMConfig["MaxConnRetry"]
 
-        self.tincanparams = self.CFxHandle.queryParam("Tincan")
-        for k in range(len(self.tincanparams["vnets"])):
-            interface_name= self.tincanparams["vnets"][k]["ipoptap_name"]
+        self.tincanparams = self.CFxHandle.queryParam("Tincan","Vnets")
+        for k in range(len(self.tincanparams)):
+            interface_name= self.tincanparams[k]["TapName"]
             self.ipop_interface_details[interface_name]                         = {}
-            self.ipop_interface_details[interface_name]["p2p_state"]            = "started"
-            self.ipop_interface_details[interface_name]["discovered_nodes"]     = []
-            self.ipop_interface_details[interface_name]["discovered_nodes_srv"] = []     #TO DO Remove this once dev complete
-            self.ipop_interface_details[interface_name]["online_peer_uid"]     = []
-            self.ipop_interface_details[interface_name]["cas"]                  = ""
-            self.ipop_interface_details[interface_name]["mac"]                  = ""
-            self.ipop_interface_details[interface_name]["peers"]                = {}
-            self.ipop_interface_details[interface_name]["ipop_state"]           = None
-            self.ipop_interface_details[interface_name]["uid_mac_table"]        = {}
-            self.ipop_interface_details[interface_name]["mac_uid_table"]        = {}
-            self.ipop_interface_details[interface_name]["xmpp_client_code"]     = self.tincanparams["vnets"][k]["xmpp_code"]
+            interface_details = self.ipop_interface_details[interface_name]
+            interface_details["p2p_state"]            = "started"
+            interface_details["discovered_nodes"]     = []
+            interface_details["discovered_nodes_srv"] = []     #TO DO Remove this once dev complete
+            interface_details["online_peer_uid"]      = []
+            interface_details["cas"]                  = ""
+            interface_details["mac"]                  = ""
+            interface_details["peers"]                = {}
+            interface_details["ipop_state"]           = None
+            interface_details["uid_mac_table"]        = {}
+            interface_details["mac_uid_table"]        = {}
+            interface_details["xmpp_client_code"]     = self.tincanparams[k]["XMPPModuleName"]
         self.tincanparams = None
 
 
@@ -92,7 +92,7 @@ class BaseTopologyManager(ControllerModule,CFX):
         # peer is not in the peers list
         if uid not in interface_details["peers"].keys():
             # add peer to peers list
-            ttl = time.time() + self.CMConfig["ttl_link_initial"]
+            ttl = time.time() + self.CMConfig["InitialLinkTTL"]
             interface_details["peers"][uid] = {
                  "uid": uid,
                  "ttl": ttl,
@@ -148,7 +148,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             log_msg = "AIL: Recvd con_req for peer in list from {0} status {1}".format(uid, peer[uid][
                             "con_status"])
             self.registerCBT('Logger', 'info', log_msg)
-            ttl = time.time() + self.CMConfig["ttl_link_initial"]
+            ttl = time.time() + self.CMConfig["InitialLinkTTL"]
             # if node has received con_req, re-respond (in case it was lost)
             if (peer[uid]["con_status"] == "recv_con_req"):
                 log_msg = "AIL: Resending respond_connection to {0}".format(uid)
@@ -216,7 +216,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', log_msg)
             if (self.ipop_interface_details[interface_name]["ipop_state"]["_uid"] > uid):
 
-                ttl = time.time() + self.CMConfig["ttl_link_initial"]
+                ttl = time.time() + self.CMConfig["InitialLinkTTL"]
                 peer[uid] = {
                                 "uid": uid,
                                 "ttl": ttl,
@@ -257,13 +257,13 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', "Nodes:" + str(nodes))
         self.registerCBT('Logger', 'info', "Peer Nodes:" + str(interface_details["peers"]))
         # link to the closest <num_successors> nodes (if not already linked)
-        for node in nodes[0:min(len(nodes), self.CMConfig["num_successors"])]:
+        for node in nodes[0:min(len(nodes), self.CMConfig["NumberOfSuccessors"])]:
             if node not in interface_details["online_peer_uid"]:
                 self.add_outbound_link("successor", node, None, interface_name)
 
         # establishing link from the smallest UID node in the network to the biggest UID in the network
         if min([uid] + nodes) == uid:
-            for node in list(reversed(nodes))[0:self.CMConfig["num_successors"]]:
+            for node in list(reversed(nodes))[0:self.CMConfig["NumberOfSuccessors"]]:
                 if node not in interface_details["online_peer_uid"]:
                     self.add_outbound_link("successor", node, None, interface_name)
 
@@ -287,7 +287,7 @@ class BaseTopologyManager(ControllerModule,CFX):
         if uid not in peerlist:
             # add on-demand link
             attributes = {
-                        "ttl": time.time() + self.CMConfig["ttl_on_demand"],
+                        "ttl": time.time() + self.CMConfig["OnDemandLinkTTL"],
                         "rate": 0
             }
             self.add_outbound_link("on_demand", uid, attributes, interface_name)
@@ -318,18 +318,19 @@ class BaseTopologyManager(ControllerModule,CFX):
     #   returns true if this packet is intended for the calling node
     def forward_msg(self, fwd_type, dst_uid, msg, interface_name):
         # find peer that is successively closest to and less-than-or-equal-to the designated UID
-        nxt_uid = ""
         interface_details = self.ipop_interface_details[interface_name]
         uid = interface_details["ipop_state"]["_uid"]
         nxt_uid = uid
         for peer in interface_details["peers"].keys():
             if self.linked(peer, interface_name):
+                if peer == dst_uid:
+                    nxt_uid = peer
+                    break
                 if self.closer(uid, peer, dst_uid):
                     nxt_uid = peer
 
             # packet is intended specifically to the destination node
         if fwd_type == "exact":
-            #print("exact", nxt_uid, uid, dst_uid)
             # this is the destination uid
             if dst_uid == uid:  # if self.uid == dst_uid:
                  #self.send_msg_icc(nxt_uid, msg, interface_name)
@@ -353,26 +354,25 @@ class BaseTopologyManager(ControllerModule,CFX):
 
     def insertRoutingRule(self,msg):
         interface_name = msg["interface_name"]
-        uid = self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]
+        interface_details = self.ipop_interface_details[interface_name]
+        uid = interface_details["ipop_state"]["_uid"]
         dst_uid = msg["dst_uid"]
         dst_mac = msg["dst_mac"]
         nxt_uid = uid
 
-        peerlist = list(self.ipop_interface_details[interface_name]["peers"].keys())
+        peerlist = sorted(list(interface_details["peers"].keys()))
         for peer in peerlist:
             if self.linked(peer, interface_name):
                 if self.closer(uid, peer, dst_uid):
                     nxt_uid = peer
 
-        if nxt_uid == uid:
-            return
-        if dst_uid == uid:
+        if nxt_uid == uid or dst_uid == uid or dst_uid == nxt_uid:
             return
 
-        if len(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid]) ==0:
+        if len(interface_details["uid_mac_table"][nxt_uid]) ==0:
             return
 
-        nxt_mac = list(self.ipop_interface_details[interface_name]["uid_mac_table"][nxt_uid])[0]
+        nxt_mac = list(interface_details["uid_mac_table"][nxt_uid])[0]
 
         message = {
             "interface_name" : interface_name,
@@ -402,7 +402,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             if msg_type == "add_peer":
                 self.ipop_interface_details[interface_name]["peers"][uid]={
                         "uid": uid,
-                        "ttl": time.time()+self.CMConfig["ttl_link_initial"],
+                        "ttl": time.time()+self.CMConfig["InitialLinkTTL"],
                         "con_status": "offline"
                     }
                 self.registerCBT('Logger', 'debug', "inside add peer **********")
@@ -505,7 +505,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     ttl = interface_details["peers"][uid]["ttl"]
                     # update ttl attribute
                     if "online" == msg["status"]:
-                        ttl = time.time() + self.CMConfig["ttl_link_pulse"]
+                        ttl = time.time() + self.CMConfig["LinkPulse"]
                         if uid not in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].append(uid)
                     elif "unknown" == msg["status"]:
@@ -597,8 +597,6 @@ class BaseTopologyManager(ControllerModule,CFX):
                          'interface_name' : interface_name
                          }
 
-                self.registerCBT('Logger', 'info', 'Online Peer msg:::' + str(cbtdt))
-
                 self.registerCBT('BroadCastForwarder', 'peer_list', cbtdt)
 
             else:
@@ -689,7 +687,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     "sendcount": "",
                     "receivecount": "",
                 }
-                self.registerCBT("Visualizer","topology_details",new_msg)
+                self.registerCBT("OverlayVisualizer","topology_details",new_msg)
 
             # handle and forward tincan data packets
         elif cbt.action == "TINCAN_PACKET":
@@ -847,7 +845,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                 rand_list = random.sample(
                     range(0, len(self.ipop_interface_details[i_name]["discovered_nodes_srv"])),
                     min(len(self.ipop_interface_details[i_name]["discovered_nodes_srv"]),
-                        self.CMConfig["num_pings"]))
+                        self.CMConfig["NoPing2Peer"]))
 
                 for i in rand_list:
                     self.send_msg_srv("ping", self.ipop_interface_details[i_name]["discovered_nodes_srv"][i],
@@ -857,7 +855,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                 #self.ipop_interface_details[i_name]["discovered_nodes_srv"] = []
         else:
             rand_list = random.sample(range(0, len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"])),
-                    min(len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"]), self.CMConfig["num_pings"]))
+                    min(len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"]), self.CMConfig["NoPing2Peer"]))
 
             for i in rand_list:
                 self.send_msg_srv("ping", self.ipop_interface_details[interface_name]["discovered_nodes_srv"][i],
@@ -889,7 +887,7 @@ class BaseTopologyManager(ControllerModule,CFX):
         try:
             self.interval_counter += 1
             # every <interval_management> seconds
-            if self.interval_counter % self.CMConfig["interval_management"] == 0:
+            if self.interval_counter % self.CMConfig["TopologyRefreshInterval"] == 0:
                 for interface_name in self.ipop_interface_details.keys():
                     # manage topology
                     try:
@@ -910,8 +908,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                         # self.registerCBT('TincanSender', 'DO_ECHO', '')
 
             # every <interval_ping> seconds
-            if self.interval_counter % self.CMConfig["interval_ping"] == 0:
-
+            if self.interval_counter % self.CMConfig["PeerPingInterval"] == 0:
                 # ping to repair potential network partitions
                 try:
                     self.ping()

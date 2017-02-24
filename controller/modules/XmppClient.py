@@ -40,12 +40,12 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         self.uid_jid = {}
         # FullJID,Knows my UID,num(Correct advts recvd)
         self.jid_uid = defaultdict(lambda: ['', False, 1])
-        self.xmpp_username = self.CMConfig.get("xmpp_username")
-        self.xmpp_passwd = self.CMConfig.get("xmpp_password")
-        self.xmpp_host = self.CMConfig.get("xmpp_host")
-        self.xmpp_port = self.CMConfig.get("xmpp_port")
-        self.vpn_type = self.CFxHandle.queryParam("vpn_type")
-        self.interface_name  = self.CMConfig.get("ipoptap_name")
+        self.xmpp_username = self.CMConfig.get("Username")
+        self.xmpp_passwd = self.CMConfig.get("Password","None")
+        self.xmpp_host = self.CMConfig.get("AddressHost")
+        self.xmpp_port = self.CMConfig.get("Port")
+        self.vpn_type = self.CFxHandle.queryParam("CFx","Model")
+        self.interface_name  = self.CMConfig.get("TapName")
         self.uid = ""
         self.update_peerlist = False
         # time of last recvd xmpp advt.
@@ -59,26 +59,26 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         # Maximum delay between advertisements is 10 minutes
         self.MAX_ADVT_DELAY = 600
         # initialize the base Xmpp client class, handle login/authentication.
-        if self.CMConfig.get("xmpp_authentication_method") == "x509" and \
-                (self.CMConfig.get("xmpp_username") != None \
-                         or self.CMConfig.get("xmpp_password") != None):
+        if self.CMConfig.get("AuthenticationMethod") == "x509" and \
+                (self.xmpp_username != None \
+                         or self.xmpp_passwd != None):
             raise RuntimeError(
-                "x509 Authentication Exception. Username or Password present in IPOP configuration file.")
+                "x509 Authentication Error: Username/Password in IPOP configuration file.")
 
         use_tls = True
-        if self.CMConfig.get("xmpp_authentication_method") == "x509":
+        if self.CMConfig.get("AuthenticationMethod") == "x509":
             sleekxmpp.ClientXMPP.__init__(self, self.xmpp_host, self.xmpp_passwd, sasl_mech='EXTERNAL')
             self.ssl_version = ssl.PROTOCOL_TLSv1
-            self.ca_certs = self.CMConfig.get("truststore")
-            self.certfile = self.CMConfig.get("certdirectory") + self.CMConfig.get("certfile")
-            self.keyfile = self.CMConfig.get("certdirectory") + self.CMConfig.get("keyfile")
+            self.ca_certs = self.CMConfig.get("TrustStore")
+            self.certfile = self.CMConfig.get("CertDirectory") + self.CMConfig.get("CertFile")
+            self.keyfile = self.CMConfig.get("CertDirectory") + self.CMConfig.get("Keyfile")
         else:
             sleekxmpp.ClientXMPP.__init__(self, self.xmpp_username, self.xmpp_passwd, sasl_mech='PLAIN')
-            if self.CMConfig.get("xmpp_accept_untrusted_server") == True:
+            if self.CMConfig.get("AcceptUntrustedServer") == True:
                 self['feature_mechanisms'].unencrypted_plain = True
                 use_tls = False
             else:
-                self.ca_certs = self.CMConfig.get("truststore")
+                self.ca_certs = self.CMConfig.get("TrustStore")
 
         # register a new plugin stanza and handler for it,
         # whenever a matching message will be received on
@@ -96,9 +96,9 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         # mappings within the /16 subnet
 
         if (self.vpn_type == "GroupVPN"):
-            ipop_interfaces = self.CFxHandle.queryParam("Tincan")["vnets"]
+            ipop_interfaces = self.CFxHandle.queryParam("Tincan","Vnets")
             for interface_details in ipop_interfaces:
-                if interface_details["ipoptap_name"] == self.interface_name:
+                if interface_details["TapName"] == self.interface_name:
                     self.uid = interface_details["uid"]
         elif (self.vpn_type == "SocialVPN"):
             self.registerCBT('Watchdog', 'QUERY_IPOP_STATE')

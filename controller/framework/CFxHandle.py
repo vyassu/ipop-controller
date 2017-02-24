@@ -55,7 +55,7 @@ class CFxHandle(object):
         timer_enabled = False
 
         try:
-            interval = int(self.CMConfig['timer_interval'])
+            interval = int(self.CMConfig['TimerInterval'])
             timer_enabled = True
         except ValueError:
             logging.warning("Invalid timer configuration for {0}"
@@ -127,6 +127,6 @@ class CFxHandle(object):
                 self.submitCBT(logCBT)
 
 
-    def queryParam(self, ParamName=""):
-        pv = self.__CFxObject.queryParam(ParamName)
+    def queryParam(self, ModuleName, ParamName=""):
+        pv = self.__CFxObject.queryParam(ModuleName,ParamName)
         return pv

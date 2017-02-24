@@ -326,7 +326,7 @@ class ConnectionManager(ControllerModule):
                         "on_demand" : on_demands
                     }
                 }
-                self.registerCBT("OverlayVisualizer","link_details",msg)
+                self.registerCBT("Visualizer","link_details",msg)
         else:
             log = '{0}: unrecognized CBT {1} received from {2}'\
                     .format(cbt.recipient, cbt.action, cbt.initiator)

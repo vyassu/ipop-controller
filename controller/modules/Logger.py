@@ -9,8 +9,8 @@ class Logger(ControllerModule):
         super(Logger, self).__init__(CFxHandle, paramDict, ModuleName)
 
     def initialize(self):
-        if "controller_logging" in self.CMConfig:
-            level = getattr(logging, self.CMConfig["controller_logging"])
+        if "LogLevel" in self.CMConfig:
+            level = getattr(logging, self.CMConfig["LogLevel"])
             logging.basicConfig(format='[%(asctime)s.%(msecs)03d] %(levelname)s:%(message)s',datefmt='%Y%m%d %H:%M:%S',level=level)
 
         logging.info("Logger Module Loaded")

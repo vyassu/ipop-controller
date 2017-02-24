@@ -10,12 +10,16 @@ ipopVerRel = "{0}.{1}.{2}".format(ipopVerMjr, ipopVerMnr, ipopVerRev)
 # set default config values
 CONFIG = {
     "CFx": {
-        "subnet_mask": 24,
+        "subnet_mask": 16,
         "contr_port": 5801,
         "local_uid": "",
         "uid_size": 40,
         "router_mode": False,
-        "ipopVerRel" : ipopVerRel
+        "ipopVerRel" : ipopVerRel,
+        "MTU4": 1200,
+        "MTU6": 1200,
+        "LocalPrefix6": 64,
+        "LocalPrefix4": 16
     },
     "TincanListener": {
         "buf_size": 65507,

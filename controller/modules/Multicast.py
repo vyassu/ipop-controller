@@ -5,14 +5,13 @@ class Multicast(ControllerModule):
     def __init__(self, CFxHandle, paramDict, ModuleName):
         super(Multicast, self).__init__(CFxHandle, paramDict, ModuleName)
         self.ConfigData = paramDict
-        self.tincanparams = self.CFxHandle.queryParam("Tincan")
+        self.tincanparams = self.CFxHandle.queryParam("Tincan","Vnets")
         self.ipop_interface_details = {}
-        for k in range(len(self.tincanparams["vnets"])):
-            interface_name  = self.tincanparams["vnets"][k]["ipoptap_name"]
-
+        for k in range(len(self.tincanparams)):
+            interface_name  = self.tincanparams[k]["TapName"]
             self.ipop_interface_details[interface_name] = {}
             interface_detail                            = self.ipop_interface_details[interface_name]
-            interface_detail["uid"]                     = self.tincanparams["vnets"][k]["uid"]
+            interface_detail["uid"]                     = self.tincanparams[k]["uid"]
             interface_detail["msgcount"]                = {}
             interface_detail["mac"]                     = ""
             interface_detail["local_peer_mac_address"]  = []
@@ -123,7 +122,7 @@ class Multicast(ControllerModule):
             else:
                 interface_details["msgcount"][uid] += 1
 
-            if interface_details["msgcount"][uid] > self.ConfigData["on_demand_threshold"]:
+            if interface_details["msgcount"][uid] > self.ConfigData["OnDemandThreshold"]:
                 msg = {
                          "msg_type" : "add_on_demand",
                          "uid"      : uid,

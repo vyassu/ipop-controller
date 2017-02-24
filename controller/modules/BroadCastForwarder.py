@@ -9,11 +9,11 @@ class BroadCastForwarder(ControllerModule):
         super(BroadCastForwarder,self).__init__(CFxHandle,paramDict,ModuleName)
         self.uid=""
         self.ipop_interface_details = {}
-        self.tincanparams = self.CFxHandle.queryParam("Tincan")
-        for k in range(len(self.tincanparams["vnets"])):
-            interface_name = self.tincanparams["vnets"][k]["ipoptap_name"]
+        self.tincanparams = self.CFxHandle.queryParam("Tincan","Vnets")
+        for k in range(len(self.tincanparams)):
+            interface_name = self.tincanparams[k]["TapName"]
             self.ipop_interface_details[interface_name] = {}
-            self.ipop_interface_details[interface_name]["uid"]       = self.tincanparams["vnets"][k]["uid"]
+            self.ipop_interface_details[interface_name]["uid"]       = self.tincanparams[k]["uid"]
             self.ipop_interface_details[interface_name]["mac"]       = ""
             self.ipop_interface_details[interface_name]["peer_list"] = []
         self.tincanparams = None
@@ -36,10 +36,7 @@ class BroadCastForwarder(ControllerModule):
             interface_name = cbt.data.get("interface_name")
             self.ipop_interface_details[interface_name]["peerlist"] = list(sorted(cbt.data['peerlist']))
             self.ipop_interface_details[interface_name]["mac"]      = cbt.data.get("mac")
-            self.registerCBT('Logger','info','Received the peer list: '+str(self.ipop_interface_details[interface_name]["peerlist"]))
         elif cbt.action=='broadcast':
-            #self.registerCBT('Logger','info', "the received data::: "+str(cbt.data))
-            self.registerCBT('Logger','info',"@@@@@ Node's own uid : "+self.uid)
             self.sendtopeer(cbt.data,"broadcast")
         elif cbt.action=='multicast':
             self.sendtopeer(cbt.data, "multicast")
@@ -52,9 +49,6 @@ class BroadCastForwarder(ControllerModule):
                 self.registerCBT('Logger', 'debug',"@@@@@ Message originated at this node ... Sending to suitable peers")
                 self.sendPktToAllPeers(self.ipop_interface_details[interface_name]["peerlist"],\
                                        data["dataframe"],datype,data["interface_name"])
-                #messagedetails = {"send": self.send_count, "receive": self.receive_count}
-                #self.registerCBT('BaseTopologyManager', 'Send_Receive_Details', messagedetails)
-                #self.recvPkt(data, data["message_type"], data["interface_name"])
             else:
                 messagetime = data["put_time"]
                 if self.prevtimestamp.count(messagetime) == 0:
@@ -126,9 +120,9 @@ class BroadCastForwarder(ControllerModule):
                         self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                         self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 
-          elif uid <= min(in_plist) and self.uid < init_id:
+          elif uid <= min(in_plist) and uid < init_id:
               for peer in plist:
-                  if uid > peer and in_plist.count(peer) == 0 and peer != init_id:
+                  if uid < peer and in_plist.count(peer) == 0 and peer != init_id and peer < max(in_plist):
                       self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                       self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 
