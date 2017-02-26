@@ -25,7 +25,7 @@ class BroadCastForwarder(ControllerModule):
         self.registerCBT('Logger','info',"{0} Loaded".format(self.ModuleName))
 
     def inserttimestamp(self,time):
-        if len(self.prevtimestamp)<10:
+        if len(self.prevtimestamp)<1000:
             self.prevtimestamp.append(time)
         else:
             self.prevtimestamp=[]
@@ -57,7 +57,7 @@ class BroadCastForwarder(ControllerModule):
                     self.registerCBT('Logger', 'info',"@@@@@ Message received from another node ... Sending to suitable peers")
                     self.sendPkt(data["dataframe"], data["init_uid"], data["peer_list"], messagetime,datype,data["interface_name"])
                     # Passing the message to itself.
-                    self.recvPkt(data,data["message_type"],data["interface_name"])
+                    #self.recvPkt(data,data["message_type"],data["interface_name"])
                 else:
                     self.registerCBT('Logger', 'warning',
                                      "Duplicate Message !!!")
@@ -66,7 +66,6 @@ class BroadCastForwarder(ControllerModule):
             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', {"interface_name":data["interface_name"],"type": "GetOnlinePeerList"})
 
     def forwardMessage(self,msg_frame,init_id,suc_id,peer,peer_list,time,datype,interface_name):
-         #self.registerCBT('Logger','info',msg_frame)
          self.send_count+=1
          cbtdata = {
                         "msg_type": "forward",
@@ -76,7 +75,6 @@ class BroadCastForwarder(ControllerModule):
                         "msg": {
                                  "dataframe":str(msg_frame),
                                  "init_uid": init_id,
-                                 "init_mac": self.ipop_interface_details[interface_name]["mac"],
                                  "peer_list" : peer_list,
                                  "put_time" :  time,
                                  "message_type" : datype
@@ -116,7 +114,7 @@ class BroadCastForwarder(ControllerModule):
 
           if uid >= max(in_plist) and uid > init_id:
               for peer in plist:
-                    if uid < peer and in_plist.count(peer) == 0 and peer != init_id:
+                    if uid > peer and peer != init_id:
                         self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                         self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 

@@ -196,7 +196,7 @@ ADD_ROUTING = {
         "TransactionId" : 102001,
         "ControlType": "TincanRequest",
         "Request": {
-            "Command": "AddRoutes",
+            "Command": "UpdateMap",
             "InterfaceName" : "ipop_tap0",
             "Routes" : []
             }

@@ -111,7 +111,7 @@ class CFX(object):
             vn["IPOP"]["Request"]["TurnPass"]       = self.CONFIG["Tincan"]["Turn"][0]["Password"]
 
             if "IP4Mask" in self.vnetdetails[i]:
-                vn["IPOP"]["Request"]["LocalPrefix4"] = self.vnetdetails[i]["IP4Mask"]
+                vn["IPOP"]["Request"]["LocalPrefix4"] = self.vnetdetails[i]["IP4Prefix"]
             else:
                 vn["IPOP"]["Request"]["LocalPrefix4"] = self.CONFIG["CFx"]["LocalPrefix4"]
 

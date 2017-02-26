@@ -38,7 +38,7 @@ class TincanDispatcher(ControllerModule):
                                     "interface_name":interface_name
                                 }
                             log = "current state of {0} : {1}".format(resp_msg["UID"], str(msg))
-                            self.registerCBT('Logger', 'debug', log)
+                            #self.registerCBT('Logger', 'debug', log)
                             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', msg)
                         else:
                             if resp_msg["Status"]!="unknown":
@@ -68,7 +68,7 @@ class TincanDispatcher(ControllerModule):
                                     "interface_name": interface_name
                                 }
                             log = "current state of {0} : {1}".format(resp_msg["UID"], str(msg))
-                            self.registerCBT('Logger', 'debug', log)
+                            #self.registerCBT('Logger', 'debug', log)
                             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', msg)
 
                 elif req_operation == "CreateLinkListener":
@@ -130,8 +130,11 @@ class TincanDispatcher(ControllerModule):
                             dataframe = iccmsg["msg"]["dataframe"]
                             if str(dataframe[24:28]) == "0800":
                                 self.registerCBT('Multicast', 'IP_PACKET', iccmsg["msg"])
+                                self.registerCBT("BaseTopologyManager", "TINCAN_PACKET", iccmsg["msg"])
                             else:
                                 self.registerCBT('Multicast', 'ARP_PACKET', iccmsg["msg"])
+                        elif iccmsg["msg"]["message_type"] == "broadcast":
+                            self.registerCBT('BroadCastController', 'broadcast', iccmsg["msg"])
                         else:
                             self.registerCBT('BaseTopologyManager', 'ICC_CONTROL', iccmsg["msg"])
                     else:
@@ -155,11 +158,13 @@ class TincanDispatcher(ControllerModule):
                 self.registerCBT('Logger', 'debug', log)
 
                 if str(msg[24:28]) == "0800":
-                    #self.registerCBT("BaseTopologyManager", "TINCAN_PACKET", datagram)
-                    self.registerCBT('Multicast', 'IP_PACKET', datagram)
+                    datagram["m_type"] = "IP"
+                    self.registerCBT("BaseTopologyManager", "TINCAN_PACKET", datagram)
+                    #self.registerCBT('Multicast', 'IP_PACKET', datagram)
                 elif str(msg[24:28]) == "0806":
                     print("ARP/RevereseARP Packet obtained from Tincan")
                     datagram["message_type"] = "multicast"
+                    datagram["m_type"] = "ARP"
                     self.registerCBT('Multicast', 'ARP_PACKET', datagram)
                 else:
                     datagram["message_type"] = "broadcast"

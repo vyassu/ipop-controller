@@ -14,7 +14,8 @@ class Multicast(ControllerModule):
             interface_detail["uid"]                     = self.tincanparams[k]["uid"]
             interface_detail["msgcount"]                = {}
             interface_detail["mac"]                     = ""
-            interface_detail["local_peer_mac_address"]  = []
+            interface_detail["ip"]                      = self.tincanparams[k]["IP4"]
+            interface_detail["local_mac_ip_table"]      = {}
         self.tincanparams = None
 
     def initialize(self):
@@ -32,21 +33,16 @@ class Multicast(ControllerModule):
         elif cbt.action == "RECV_PEER_MAC_DETAILS":
             self.registerCBT('Logger', 'info', "Inside Multicast Module Update Peer MAC details")
             self.registerCBT('Logger', 'info', "Multicast Message:: "+str(cbt.data))
-            uidmappinglist  = cbt.data["msg"]["uidmappinglist"]
-            src_uid         = cbt.data["msg"]["src_uid"]
-            mac_2_uid_dict  = {}
 
-            for mac in uidmappinglist:
-                mac_2_uid_dict[mac] = src_uid
+            mac_ip_table  = cbt.data["msg"]["mac_ip_table"]
+            src_uid         = cbt.data["msg"]["src_uid"]
 
             UpdateBTMMacUIDTable = {
-                "uid_mac_table"     : {
-                    src_uid: uidmappinglist
-                },
-                "mac_uid_table"     : mac_2_uid_dict,
+                "uid"               : src_uid,
+                "mac_ip_table"      : mac_ip_table,
                 "interface_name"    : interface_name,
                 "location"          : "remote",
-                "type"              : "UpdateMACUID"
+                "type"              : "UpdateMACUIDIp"
             }
             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', UpdateBTMMacUIDTable)
             return
@@ -64,12 +60,7 @@ class Multicast(ControllerModule):
             destmac     = frame[srcipindex:destmacindex]
             destipindex = destmacindex + 2 * iplen
             destip      = '.'.join(str(int(i, 16)) for i in [frame[destmacindex:destipindex][i:i+2] for i in range(0, 8, 2)])
-        elif cbt.action == "IP_PACKET":
-            self.registerCBT('Logger', 'info', "Inside Multicast IP module")
-            self.registerCBT('Logger', 'debug', "Multicast Message::" + str(cbt.data))
-            destmac, srcmac = frame[0:12], frame[12:24]
-            srcip = '.'.join(str(int(i, 16)) for i in [frame[52:60][i:i + 2] for i in range(0, 8, 2)])
-            dstip = '.'.join(str(int(i, 16)) for i in [frame[60:68][i:i + 2] for i in range(0, 8, 2)])
+
 
         # TO DO Remove the below statements after development
         self.registerCBT('Logger', 'debug', "Source MAC:: "+ str(srcmac))
@@ -78,75 +69,61 @@ class Multicast(ControllerModule):
         self.registerCBT('Logger', 'debug', "Destination ip:: " + str(destip))
 
         current_node_uid = interface_details["uid"]
-
-        if cbt.data["type"] == "local":
-            mac_2_uid_dict = {}
-            if int(srcmac,16) != 0:
-                interface_details["local_peer_mac_address"].append(srcmac)
-                mac_2_uid_dict[srcmac]   = current_node_uid
-            if int(destmac,16) !=0:
-                interface_details["local_peer_mac_address"].append(destmac)
-                mac_2_uid_dict[destmac]  = current_node_uid
-            interface_details["local_peer_mac_address"] = list(set(interface_details["local_peer_mac_address"]))
-            UpdateBTMMacUIDTable = {
-                "uid_mac_table": {
-                    current_node_uid: interface_details["local_peer_mac_address"]
-                },
-                "mac_uid_table": mac_2_uid_dict,
-                "interface_name": interface_name,
-                "location": "local",
-                "type": "UpdateMACUID"
-            }
-
-        else:
-            uid = cbt.data["init_uid"]
-            mac_2_uid_dict = {}
-            uid_2_mac_list = []
-            if int(srcmac, 16) != 0:
-                uid_2_mac_list.append(srcmac)
-                mac_2_uid_dict[srcmac] = uid
-            if int(destmac, 16) != 0:
-                uid_2_mac_list.append(destmac)
-                mac_2_uid_dict[destmac] = uid
-
-            UpdateBTMMacUIDTable = {
-                "uid_mac_table"     : {uid :uid_2_mac_list},
-                "mac_uid_table"     : mac_2_uid_dict,
-                "interface_name"    : interface_name,
-                "location"          : "remote",
-                "type"              : "UpdateMACUID"
-            }
-
-            if uid not in list(interface_details["msgcount"].keys()):
-                interface_details["msgcount"][uid] = 1
-            else:
-                interface_details["msgcount"][uid] += 1
-
-            if interface_details["msgcount"][uid] > self.ConfigData["OnDemandThreshold"]:
-                msg = {
-                         "msg_type" : "add_on_demand",
-                         "uid"      : uid,
-                        "interface_name" : interface_name
+        # ARP Request Packet
+        if op == 1:
+            if cbt.data["type"] == "local":
+                mac_ip_table = {}
+                if int(srcmac,16) != 0:
+                    interface_details["local_mac_ip_table"][srcmac] = srcip
+                    mac_ip_table[srcmac] = srcip
+                UpdateBTMMacUIDTable = {
+                    "uid"         : current_node_uid,
+                    "mac_ip_table": mac_ip_table,
+                    "interface_name": interface_name,
+                    "location": "local",
+                    "type": "UpdateMACUIDIp"
                 }
-                self.registerCBT("BaseTopologyManager","ICC_CONTROL",msg)
 
-            if cbt.action == "ARP_PACKET":
-                sendlocalmacdetails = {
+            else:
+                uid = cbt.data["init_uid"]
+                mac_ip_table = {}
+                if int(srcmac, 16) != 0:
+                    mac_ip_table[srcmac] = srcip
+
+                UpdateBTMMacUIDTable = {
+                    "uid"               : uid,
+                    "mac_ip_table"      : mac_ip_table,
+                    "interface_name"    : interface_name,
+                    "location"          : "remote",
+                    "type"              : "UpdateMACUIDIp"
+                }
+
+            # Broadcast the ARP Message using the Overlay
+            if destip != self.ipop_interface_details[interface_name]["ip"]:
+                self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
+            else:
+                self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', cbt.data)
+            # Update BTM MAC-UID-IP Tables
+            self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', UpdateBTMMacUIDTable)
+        else:
+            # Use BTM TINCAN_PKT to route ARP Reply Message using OVERLAY
+            self.registerCBT('BaseTopologyManager', 'TINCAN_PACKET', cbt.data)
+
+            sendlocalmacdetails = {
                         "interface_name": interface_name,
+                        "type"          : "local",
                         "src_uid"       : current_node_uid,
-                        "dst_uid"       : uid,
-                        "msg_type"      : "forward",
-                        "msg"           : {
+                        "dataframe"     : {
                                 "src_uid"       : current_node_uid,
                                 "src_node_mac"  : interface_details["mac"],
-                                "uidmappinglist": interface_details["local_peer_mac_address"],
+                                "mac_ip_table": interface_details["local_mac_ip_table"],
                                 "message_type"  : "SendMacDetails"
                         }
-                }
-                self.registerCBT('Logger', 'debug', "Sending Local/Peer MAC details:: "+str(sendlocalmacdetails))
-                self.registerCBT('BaseTopologyManager', 'ICC_CONTROL', sendlocalmacdetails)
-        self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
-        self.registerCBT('BaseTopologyManager','TINCAN_CONTROL', UpdateBTMMacUIDTable)
+            }
+            self.registerCBT('Logger', 'debug', "Sending Local/Peer MAC details:: "+str(sendlocalmacdetails))
+            self.registerCBT('BroadCastForwarder', 'broadcast', sendlocalmacdetails)
+
+
 
 
     def terminate(self):

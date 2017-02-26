@@ -34,6 +34,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             interface_details["mac"]                  = ""
             interface_details["peers"]                = {}
             interface_details["ipop_state"]           = None
+            interface_details["ip_uid_table"]         = {}
             interface_details["uid_mac_table"]        = {}
             interface_details["mac_uid_table"]        = {}
             interface_details["xmpp_client_code"]     = self.tincanparams[k]["XMPPModuleName"]
@@ -87,7 +88,7 @@ class BaseTopologyManager(ControllerModule,CFX):
         if uid < interface_details["ipop_state"]["_uid"]:
             self.registerCBT('Logger', 'info',"Dropping connection request to Node with SmallerUID. {0}".format(uid))
             return
-        self.registerCBT('Logger', 'debug', "peer::" + str(interface_details["peers"]))
+        #self.registerCBT('Logger', 'debug', "peer::" + str(interface_details["peers"]))
 
         # peer is not in the peers list
         if uid not in interface_details["peers"].keys():
@@ -254,7 +255,6 @@ class BaseTopologyManager(ControllerModule,CFX):
         if max([uid] + nodes) != uid:
             while nodes[0] < uid:
                 nodes.append(nodes.pop(0))
-            self.registerCBT('Logger', 'info', "Nodes:" + str(nodes))
         self.registerCBT('Logger', 'info', "Peer Nodes:" + str(interface_details["peers"]))
         # link to the closest <num_successors> nodes (if not already linked)
         for node in nodes[0:min(len(nodes), self.CMConfig["NumberOfSuccessors"])]:
@@ -352,34 +352,20 @@ class BaseTopologyManager(ControllerModule,CFX):
         return False
 
 
-    def insertRoutingRule(self,msg):
-        interface_name = msg["interface_name"]
+    def getnearestnode(self,remoteuid,interface_name):
         interface_details = self.ipop_interface_details[interface_name]
         uid = interface_details["ipop_state"]["_uid"]
-        dst_uid = msg["dst_uid"]
-        dst_mac = msg["dst_mac"]
         nxt_uid = uid
 
         peerlist = sorted(list(interface_details["peers"].keys()))
         for peer in peerlist:
             if self.linked(peer, interface_name):
-                if self.closer(uid, peer, dst_uid):
+                if self.closer(uid, peer, remoteuid):
                     nxt_uid = peer
+        if nxt_uid == uid:
+            nxt_uid = max(peerlist)
+        return nxt_uid
 
-        if nxt_uid == uid or dst_uid == uid or dst_uid == nxt_uid:
-            return
-
-        if len(interface_details["uid_mac_table"][nxt_uid]) ==0:
-            return
-
-        nxt_mac = list(interface_details["uid_mac_table"][nxt_uid])[0]
-
-        message = {
-            "interface_name" : interface_name,
-            "sourcemac"      : nxt_mac,
-            "destmac"        : dst_mac
-        }
-        self.registerCBT("TincanSender","DO_INSERT_ROUTING_RULES",message)
 
     def processCBT(self, cbt):
         msg = cbt.data
@@ -409,11 +395,14 @@ class BaseTopologyManager(ControllerModule,CFX):
                 #self.ipop_interface_details[interface_name]["peer_uids"][uid] = 1
             elif msg_type == "remove_peer":
                 self.registerCBT('Logger', 'debug',"inside remove peer************")
-                if uid in self.ipop_interface_details[interface_name]["peers"].keys():
+                if uid in list(self.ipop_interface_details[interface_name]["peers"].keys()):
                     del  self.ipop_interface_details[interface_name]["peers"][uid]
                 if uid in self.ipop_interface_details[interface_name]["online_peer_uid"]:
                     self.ipop_interface_details[interface_name]["online_peer_uid"].remove(msg["uid"])
                 if uid in list(self.ipop_interface_details[interface_name]["uid_mac_table"].keys()):
+                    maclist =  list(self.ipop_interface_details[interface_name]["uid_mac_table"][uid])
+                    for mac in maclist:
+                        del self.ipop_interface_details[interface_name]["mac_uid_table"][mac]
                     del self.ipop_interface_details[interface_name]["uid_mac_table"][uid]
             else:
                 log = '{0}: unrecognized CBT message {1} received from {2}.Data:: {3}' \
@@ -513,10 +502,10 @@ class BaseTopologyManager(ControllerModule,CFX):
                         if uid in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].remove(msg["uid"])
                         if uid in list(interface_details["uid_mac_table"].keys()):
-                            mac_list = interface_details["uid_mac_table"][uid]
-                            del interface_details["uid_mac_table"][uid]
+                            mac_list = list(interface_details["uid_mac_table"][uid])
                             for mac in mac_list:
                                 del interface_details["mac_uid_table"][mac]
+                            del interface_details["uid_mac_table"][uid]
                         return
                     else:
                         if msg["uid"] in interface_details["online_peer_uid"]:
@@ -544,47 +533,45 @@ class BaseTopologyManager(ControllerModule,CFX):
                 self.add_inbound(msg["data"]["con_type"], msg["uid"], msg["data"], interface_name)
                 #interface_details["peer_uids"][msg["uid"]] = 1
 
-            elif msg_type == "UpdateMACUID":
+            elif msg_type == "UpdateMACUIDIp":
                 location    = msg.get("location")
-                uid         = list(msg["uid_mac_table"].keys())[0]
+                uid         = msg["uid"]
+                localuid    = interface_details["ipop_state"]["_uid"]
 
                 #check whether an entry exists for UID
                 if uid not in list(interface_details["uid_mac_table"].keys()):
                     interface_details["uid_mac_table"][uid] = []
 
                 self.registerCBT('Logger', 'info', 'UpdateMACUIDMessage:::' + str(msg))
-                #Iterate over to find existing MACs
-                for mac in msg["uid_mac_table"][uid]:
-                    # Check whether mapping exists
-                    if mac not in list(interface_details["mac_uid_table"].keys()) and mac != "":
-                        interface_details["uid_mac_table"][uid].append(mac)
-                        if location == "remote":
+
+                if uid not in interface_details["online_peer_uid"] and uid !=localuid:
+                    nextuid = self.getnearestnode(uid,interface_name)
+                    nextnodemac = interface_details["uid_mac_table"][nextuid][0]
+                    for destmac in list(msg["mac_ip_table"].keys()):
+                        self.registerCBT('Logger', 'info', 'UpdateMACUIDMessage:::' + str(interface_details["mac_uid_table"]))
+                        if destmac not in list(interface_details["mac_uid_table"].keys()):
                             message = {
                                 "interface_name": interface_name,
-                                "dst_uid": uid,
-                                "dst_mac": [mac]
+                                "sourcemac": nextnodemac,
+                                "destmac": [destmac]
                             }
-                            self.insertRoutingRule(message)
-                    else:
-                        deletepeermac ={
-                            "interface_name": interface_name,
-                            "mac" : mac
-                        }
-                        olduid = interface_details["mac_uid_table"][mac]
-                        #check whether the previous mapping is different from current
-                        if olduid != uid and location == "remote" and olduid in interface_details["uid_mac_table"].keys() :
-                            if interface_details["uid_mac_table"][olduid].count(mac)>0:
-                                interface_details["uid_mac_table"][olduid].remove(mac)
-                                interface_details["uid_mac_table"][uid].append(mac)
-                                #self.registerCBT("TincanSender","DO_REMOVE_ROUTING_RULES",deletepeermac)
+                            self.registerCBT("TincanSender", "DO_INSERT_ROUTING_RULES", message)
+                        else:
+                            olduid = interface_details["mac_uid_table"][destmac]
+                            if olduid != uid:
                                 message = {
                                     "interface_name": interface_name,
-                                    "dst_uid": uid,
-                                    "dst_mac": [mac]
+                                    "sourcemac": nextnodemac,
+                                    "destmac": [destmac]
                                 }
-                                self.insertRoutingRule(message)
+                                self.registerCBT("TincanSender", "DO_INSERT_ROUTING_RULES", message)
 
-                self.ipop_interface_details[interface_name]["mac_uid_table"].update(msg["mac_uid_table"])
+                for mac, ip in msg["mac_ip_table"].items():
+                    if mac not in interface_details["uid_mac_table"][uid]:
+                        interface_details["uid_mac_table"][uid].append(mac)
+                    interface_details["ip_uid_table"].update({ip: uid})
+                    interface_details["mac_uid_table"].update({mac: uid})
+
 
             elif msg_type == "GetOnlinePeerList":
                 self.registerCBT('Logger', 'info', 'Control inside BaseTopology Manager peerlist code')
@@ -624,13 +611,13 @@ class BaseTopologyManager(ControllerModule,CFX):
                 dst_uid = msg["dst_uid"]
 
                 if dst_uid != self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]:
-                    log = "Going to forward the message:::@::" + str(msg)
-                    self.registerCBT('Logger', 'info', log)
                     self.forward_msg("exact", msg["dst_uid"], msg, interface_name)
-                    time.sleep(3)
                 else:
                 #if self.forward_msg("exact", msg["dst_uid"], msg, interface_name):
                     msg["interface_name"] = interface_name
+                    if "datagram" in msg.keys():
+                        log = "Datagram {0}:::@@@".format(msg["datagram"])
+                        self.registerCBT('Logger', 'info', log)
                     # self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', msg)
 
                     log = "Message at the destination {0}".format(msg["src_uid"])
@@ -655,15 +642,9 @@ class BaseTopologyManager(ControllerModule,CFX):
 
             # handle found chord
             elif msg_type == "found_chord":
-                log = "Inside found chord api"
-                self.registerCBT('Logger', 'info', log)
 
                 if self.forward_msg("exact", msg["dst_uid"], msg, interface_name):
-                    log = "Inside destination"
-                    self.registerCBT('Logger', 'info', log)
                     if msg["src_uid"] > self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]:
-                        log = "Going to initiate a chord connection Peer::{0}".format(msg["src_uid"])
-                        self.registerCBT('Logger', 'info', log)
                         self.add_outbound_link("chord", msg["src_uid"],None, interface_name)
 
             elif msg_type == "add_on_demand":
@@ -694,43 +675,52 @@ class BaseTopologyManager(ControllerModule,CFX):
             reqdata = cbt.data
             interface_name = reqdata["interface_name"]
             data = reqdata["dataframe"]
+            interface_details = self.ipop_interface_details[interface_name]
+            m_type = reqdata["m_type"]
             # ignore packets when not connected to the overlay
-            if self.ipop_interface_details[interface_name]["p2p_state"] != "connected":
+            if interface_details["p2p_state"] != "connected":
                 return
 
             # extract the source uid and destination uid
             # XXX src_uid and dst_uid should be obtained from the header, but
             # sometimes the dst_uid is the null uid
             # FIXME sometimes an irrelevant ip4 address obtained
-            '''
-            src_ip4 = '.'.join(str(int(i, 16)) for i in [data[52:60][i:i + 2] for i in range(0, 8, 2)])
-            dst_ip4 = '.'.join(str(int(i, 16)) for i in [data[60:68][i:i + 2] for i in range(0, 8, 2)])
-            index = self.ipop_interface_details[interface_name]["index"]
-            ip4_uid_table = self.tincanparams["vnets"][index]["ip4_uid_table"]
-            if src_ip4 in ip4_uid_table.keys() and dst_ip4 in ip4_uid_table.keys():
-                src_uid = ip4_uid_table[src_ip4]
-                dst_uid = ip4_uid_table[dst_ip4]
+
+            if m_type=="IP":
+                maclen = int(data[36:38], 16)
+                iplen = int(data[38:40], 16)
+                srcmacindex = 44 + 2 * maclen
+                srcmac = data[44:srcmacindex]
+                srcipindex = srcmacindex + 2 * iplen
+                srcip = '.'.join(
+                    str(int(i, 16)) for i in [data[srcmacindex:srcipindex][i:i + 2] for i in range(0, 8, 2)])
+                destmacindex = srcipindex + 2 * maclen
+                destmac = data[srcipindex:destmacindex]
+                destipindex = destmacindex + 2 * iplen
+                dst_ip = '.'.join(
+                    str(int(i, 16)) for i in [data[destmacindex:destipindex][i:i + 2] for i in range(0, 8, 2)])
             else:
-                log = "recv illegal tincan_packet: src={0} dst={1}".format(src_ip4, dst_ip4)
-                self.registerCBT('Logger', 'error', log)
-            '''
+                src_ip = '.'.join(str(int(i, 16)) for i in [data[52:60][i:i + 2] for i in range(0, 8, 2)])
+                dst_ip = '.'.join(str(int(i, 16)) for i in [data[60:68][i:i + 2] for i in range(0, 8, 2)])
+                destmac, srcmac = data[0:12], data[12:24]
 
-            destmac, srcmac = data[0:12], data[12:24]
-            mac_uid_table = self.ipop_interface_details[interface_name]["mac_uid_table"]
-
-            if destmac not in mac_uid_table.keys():
+            ip4_uid_table = interface_details["ip_uid_table"]
+            if dst_ip in list(ip4_uid_table.keys()):
+                dst_uid = ip4_uid_table[dst_ip]
+            elif destmac in interface_details["mac_uid_table"].keys():
+                dst_uid = interface_details["mac_uid_table"][destmac]
+            else:
                 log = "recv illegal tincan_packet: src={0} dst={1}".format(srcmac, destmac)
                 self.registerCBT('Logger', 'error', log)
                 return
-            else:
-                dst_uid = mac_uid_table[destmac]
+
 
             # send forwarded message
             new_msg = {
                 "msg_type": "forward",
                 "src_uid": self.ipop_interface_details[interface_name]["ipop_state"]["_uid"],
                 "dst_uid": dst_uid,
-                "msg": data
+                "datagram": data
             }
 
             self.forward_msg("exact", dst_uid, new_msg, interface_name)
@@ -739,7 +729,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             self.registerCBT('Logger', 'info', log)
 
             # add on-demand link
-            self.add_on_demand(dst_uid, interface_name)
+            #self.add_on_demand(dst_uid, interface_name)
 
         else:
             log = '{0}: unrecognized CBT message {1} received from {2}.Data:: {3}' \
@@ -845,7 +835,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                 rand_list = random.sample(
                     range(0, len(self.ipop_interface_details[i_name]["discovered_nodes_srv"])),
                     min(len(self.ipop_interface_details[i_name]["discovered_nodes_srv"]),
-                        self.CMConfig["NoPing2Peer"]))
+                        self.CMConfig["NumberOfPingsToPeer"]))
 
                 for i in rand_list:
                     self.send_msg_srv("ping", self.ipop_interface_details[i_name]["discovered_nodes_srv"][i],
@@ -855,7 +845,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                 #self.ipop_interface_details[i_name]["discovered_nodes_srv"] = []
         else:
             rand_list = random.sample(range(0, len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"])),
-                    min(len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"]), self.CMConfig["NoPing2Peer"]))
+                    min(len(self.ipop_interface_details[interface_name]["discovered_nodes_srv"]), self.CMConfig["NumberOfPingsToPeer"]))
 
             for i in rand_list:
                 self.send_msg_srv("ping", self.ipop_interface_details[interface_name]["discovered_nodes_srv"][i],

@@ -122,8 +122,9 @@ class ConnectionManager(ControllerModule):
         # determine list of designated UIDs
         log_chords = link_details["log_chords"]
         for chord in link_details["chord"].values():
-            if chord["log_uid"] in log_chords:
-                log_chords.remove(chord["log_uid"])
+            if "log_uid" in chord.keys():
+                if chord["log_uid"] in log_chords:
+                    log_chords.remove(chord["log_uid"])
 
         # forward find_chord messages to the nodes closest to the designated UID
         for log_uid in log_chords:
