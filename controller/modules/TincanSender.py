@@ -35,7 +35,7 @@ class TincanSender(ControllerModule):
             connection_details["IPOP"]["TransactionId"]   = self.trans_counter
             self.trans_counter +=1
             conn_details["PeerInfo"]["VIP4"]      = msg.get('ip4')
-            conn_details["PeerInfo"]["VIP6"]      = msg.get('ip6')
+            #conn_details["PeerInfo"]["VIP6"]      = msg.get('ip6')
             conn_details["PeerInfo"]["UID"]       = uid
             conn_details["PeerInfo"]["MAC"]       = msg.get('mac')
             conn_details["PeerInfo"]["CAS"]       = msg.get('cas')
@@ -82,7 +82,7 @@ class TincanSender(ControllerModule):
             self.trans_counter  +=1
             lcas["IPOP"]["Request"]["InterfaceName"]           = data["interface_name"]
             lcas["IPOP"]["Request"]["PeerInfo"]["VIP4"]        = data["data"]["ip4"]
-            lcas["IPOP"]["Request"]["PeerInfo"]["VIP6"]        = data["data"]["ip6"]
+            #lcas["IPOP"]["Request"]["PeerInfo"]["VIP6"]        = data["data"]["ip6"]
             lcas["IPOP"]["Request"]["PeerInfo"]["Fingerprint"] = data["data"]["fpr"]
             lcas["IPOP"]["Request"]["PeerInfo"]["UID"]         = uid
             lcas["IPOP"]["Request"]["PeerInfo"]["MAC"]         = data["data"]["mac"]

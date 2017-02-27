@@ -54,7 +54,7 @@ class BaseTopologyManager(ControllerModule,CFX):
     #   - uid = UID of the destination peer (a tincan link must exist)
     #   - msg = message
     def send_msg_icc(self, uid, msg, interface_name):
-        if uid in self.ipop_interface_details[interface_name]["peers"]:
+        if uid in self.ipop_interface_details[interface_name]["online_peer_uid"]:
             cbtdata = {
                         "src_uid": self.ipop_interface_details[interface_name]["ipop_state"]["_uid"],
                         "dst_uid": uid,
@@ -63,6 +63,8 @@ class BaseTopologyManager(ControllerModule,CFX):
             }
             self.registerCBT("Logger","debug","ICC Message overlay" + str(cbtdata))
             self.registerCBT('TincanSender', 'DO_SEND_ICC_MSG', cbtdata)
+        else:
+            self.registerCBT("Logger", "warning", "Trying to send ICC message to Offline Peer {0}. Message:: {1}".format(uid,msg))
 
     def linked(self, uid, interface_name):
         peers = self.ipop_interface_details[interface_name]["peers"]
@@ -107,7 +109,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                         "interface_name" : interface_name,
                         "ip4"            : interface_details["ipop_state"]["_ip4"],
                         "fpr"            : interface_details["ipop_state"]["_fpr"],
-                        "ip6"            : interface_details["ipop_state"]["_ip6"],
+                        #"ip6"            : interface_details["ipop_state"]["_ip6"],
                         "mac"            : interface_details["mac"],
                         "ttl"            : ttl
             }
@@ -136,7 +138,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             "fpr"      : self.ipop_interface_details[interface_name]["ipop_state"]["_fpr"],
             "cas"      : data["cas"],
             "ip4"      : self.ipop_interface_details[interface_name]["ipop_state"]["_ip4"],
-            "ip6"      : self.ipop_interface_details[interface_name]["ipop_state"]["_ip6"],
+            #"ip6"      : self.ipop_interface_details[interface_name]["ipop_state"]["_ip6"],
             "mac"      : self.ipop_interface_details[interface_name]["mac"]
         }
 
@@ -321,7 +323,7 @@ class BaseTopologyManager(ControllerModule,CFX):
         interface_details = self.ipop_interface_details[interface_name]
         uid = interface_details["ipop_state"]["_uid"]
         nxt_uid = uid
-        for peer in interface_details["peers"].keys():
+        for peer in sorted(interface_details["online_peer_uid"]):
             if self.linked(peer, interface_name):
                 if peer == dst_uid:
                     nxt_uid = peer
@@ -338,7 +340,8 @@ class BaseTopologyManager(ControllerModule,CFX):
 
                 # this is the closest node but not the destination; drop packet
             elif nxt_uid == uid:  # elif self.uid == nxt_uid:
-                return False
+                nxt_uid = max(interface_details["online_peer_uid"])
+                #return False
 
         # packet is intended to the node closest to the designated node
         elif fwd_type == "closest":
@@ -549,6 +552,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     nextnodemac = interface_details["uid_mac_table"][nextuid][0]
                     for destmac in list(msg["mac_ip_table"].keys()):
                         self.registerCBT('Logger', 'info', 'UpdateMACUIDMessage:::' + str(interface_details["mac_uid_table"]))
+                        '''
                         if destmac not in list(interface_details["mac_uid_table"].keys()):
                             message = {
                                 "interface_name": interface_name,
@@ -565,7 +569,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                                     "destmac": [destmac]
                                 }
                                 self.registerCBT("TincanSender", "DO_INSERT_ROUTING_RULES", message)
-
+                        '''
                 for mac, ip in msg["mac_ip_table"].items():
                     if mac not in interface_details["uid_mac_table"][uid]:
                         interface_details["uid_mac_table"][uid].append(mac)
@@ -609,19 +613,14 @@ class BaseTopologyManager(ControllerModule,CFX):
                 # handle forward packet
             elif msg_type == "forward":
                 dst_uid = msg["dst_uid"]
-
                 if dst_uid != self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]:
                     self.forward_msg("exact", msg["dst_uid"], msg, interface_name)
                 else:
-                #if self.forward_msg("exact", msg["dst_uid"], msg, interface_name):
                     msg["interface_name"] = interface_name
                     if "datagram" in msg.keys():
-                        log = "Datagram {0}:::@@@".format(msg["datagram"])
-                        self.registerCBT('Logger', 'info', log)
-                    # self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', msg)
-
-                    log = "Message at the destination {0}".format(msg["src_uid"])
-                    self.registerCBT('Logger', 'info', log)
+                        data = msg.pop("datagram")
+                        msg["dataframe"] = data
+                        self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', msg)
 
             # handle find chord
             elif msg_type == "find_chord":
@@ -661,7 +660,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     "interface_name": interface_name,
                     "uid": self.ipop_interface_details[interface_name]["ipop_state"]["_uid"],
                     "ip4": self.ipop_interface_details[interface_name]["ipop_state"]["_ip4"],
-                    "ip6": self.ipop_interface_details[interface_name]["ipop_state"]["_ip6"],
+                    #"ip6": self.ipop_interface_details[interface_name]["ipop_state"]["_ip6"],
                     "mac": self.ipop_interface_details[interface_name]["mac"],
                     "state": self.ipop_interface_details[interface_name]["p2p_state"],
                     "macuidmapping": self.ipop_interface_details[interface_name]["uid_mac_table"],
@@ -686,7 +685,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             # sometimes the dst_uid is the null uid
             # FIXME sometimes an irrelevant ip4 address obtained
 
-            if m_type=="IP":
+            if m_type=="ARP":
                 maclen = int(data[36:38], 16)
                 iplen = int(data[38:40], 16)
                 srcmacindex = 44 + 2 * maclen
@@ -725,7 +724,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
             self.forward_msg("exact", dst_uid, new_msg, interface_name)
 
-            log = "sent tincan_packet (exact): {0}".format(dst_uid)
+            log = "sent tincan_packet (exact): {0}. Message: {1}".format(dst_uid,data)
             self.registerCBT('Logger', 'info', log)
 
             # add on-demand link

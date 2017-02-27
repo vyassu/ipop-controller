@@ -57,7 +57,7 @@ class BroadCastForwarder(ControllerModule):
                     self.registerCBT('Logger', 'info',"@@@@@ Message received from another node ... Sending to suitable peers")
                     self.sendPkt(data["dataframe"], data["init_uid"], data["peer_list"], messagetime,datype,data["interface_name"])
                     # Passing the message to itself.
-                    #self.recvPkt(data,data["message_type"],data["interface_name"])
+                    self.recvPkt(data,data["message_type"],data["interface_name"])
                 else:
                     self.registerCBT('Logger', 'warning',
                                      "Duplicate Message !!!")
@@ -120,7 +120,7 @@ class BroadCastForwarder(ControllerModule):
 
           elif uid <= min(in_plist) and uid < init_id:
               for peer in plist:
-                  if uid < peer and in_plist.count(peer) == 0 and peer != init_id and peer < max(in_plist):
+                  if uid < peer and in_plist.count(peer) == 0 and peer != init_id:
                       self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                       self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 

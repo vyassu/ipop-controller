@@ -88,7 +88,7 @@ LCAS = {
           "EncryptionEnabled" : True,
           "PeerInfo" : {
             "VIP4" : "",
-            "VIP6" : "",
+            #"VIP6" : "",
             "UID" : "",
             "MAC" : "",
             "Fingerprint" : ""
@@ -107,7 +107,7 @@ CONCT = {
           "EncryptionEnabled" : True,
           "PeerInfo" : {
             "VIP4" : "",
-            "VIP6" : "",
+            #"VIP6" : "",
             "UID" : "",
             "MAC" : "",
             "Fingerprint" : ""

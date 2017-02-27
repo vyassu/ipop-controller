@@ -32,7 +32,7 @@ class TincanDispatcher(ControllerModule):
                                     "type":"local_state",
                                     "_uid": resp_msg["UID"],
                                     "_ip4": resp_msg["VIP4"],
-                                    "_ip6": resp_msg["VIP6"],
+                                    #"_ip6": resp_msg["VIP6"],
                                     "_fpr": resp_msg["Fingerprint"],
                                     "mac" : resp_msg["MAC"],
                                     "interface_name":interface_name
@@ -46,7 +46,7 @@ class TincanDispatcher(ControllerModule):
 											"type": "peer_state",
 											"uid": resp_msg["UID"],
 											"ip4": resp_msg["VIP4"],
-											"ip6": resp_msg["VIP6"],
+											#"ip6": resp_msg["VIP6"],
 											"fpr": resp_msg["Fingerprint"],
 											"mac": resp_msg["MAC"],
 											"status": resp_msg["Status"],
