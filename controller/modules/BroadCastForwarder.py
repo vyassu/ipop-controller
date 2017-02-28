@@ -49,7 +49,7 @@ class BroadCastForwarder(ControllerModule):
             if data["type"] == "local":
                 # Message originated at this node. Pass to all the Peers (with uid greater than itself).
                 self.registerCBT('Logger', 'debug',"@@@@@ Message originated at this node ... Sending to suitable peers")
-                self.sendPktToAllPeers(self.ipop_interface_details[interface_name]["peerlist"],\
+                self.sendPktToAllPeers(sorted(self.ipop_interface_details[interface_name]["peerlist"]),\
                                        data["dataframe"],datype,data["interface_name"])
             else:
                 messagetime = data["put_time"]
@@ -112,17 +112,17 @@ class BroadCastForwarder(ControllerModule):
           self.registerCBT('Logger','info','@@@ Sending packet to all suitable peers ')
           #self.registerCBT('Logger','info','@@@ Incoming suc uid : '+init_id)
           uid = self.ipop_interface_details[interface_name]["uid"]
-          plist = self.ipop_interface_details[interface_name]["peerlist"]
+          plist = sorted(self.ipop_interface_details[interface_name]["peerlist"])
 
           if uid >= max(in_plist) and uid > init_id:
               for peer in plist:
-                    if peer != init_id:
+                    if peer != init_id and peer > uid:
                         self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                         self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 
           elif uid <= min(in_plist) and uid < init_id:
               for peer in plist:
-                  if uid < peer and in_plist.count(peer) == 0 and peer != init_id:
+                  if uid > peer and in_plist.count(peer) == 0 and peer != init_id:
                       self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                       self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 

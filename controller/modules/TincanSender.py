@@ -70,7 +70,7 @@ class TincanSender(ControllerModule):
             get_state_request["IPOP"]["Request"]["UID"]           = cbt.data.get("uid")
 
             log = "Tincan Request : {0}".format(str(get_state_request["IPOP"]))
-            self.registerCBT('Logger', 'debug', log)
+            #self.registerCBT('Logger', 'debug', log)
 
             self.send_msg(json.dumps(get_state_request))
 

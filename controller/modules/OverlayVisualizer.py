@@ -26,7 +26,7 @@ class OverlayVisualizer(ControllerModule):
         if interface_name not in self.ipop_interface_details.keys():
             self.ipop_interface_details[interface_name] = {}
         self.ipop_interface_details[interface_name].update(msg)
-        self.registerCBT("Logger", "info", "IPOP_UI_DETAILS" + str(self.ipop_interface_details))
+        #self.registerCBT("Logger", "info", "IPOP_UI_DETAILS" + str(self.ipop_interface_details))
 
     def timer_method(self):
 
