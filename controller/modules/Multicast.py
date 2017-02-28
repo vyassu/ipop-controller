@@ -101,6 +101,8 @@ class Multicast(ControllerModule):
             # Broadcast the ARP Message using the Overlay
             if destip != self.ipop_interface_details[interface_name]["ip"]:
                 self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
+            elif destip == self.ipop_interface_details[interface_name]["ip"] and srcip == "0.0.0.0":
+                self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
             else:
                 self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', cbt.data)
             # Update BTM MAC-UID-IP Tables
