@@ -11,11 +11,16 @@ class BroadCastController(ControllerModule):
         self.registerCBT('Logger','info',"{0} Loaded".format(self.ModuleName))
         
     def processCBT(self, cbt):
-        if cbt.action == 'broadcast':
+        if cbt.action == 'BroadcastPkt':
             recvd_frame = cbt.data
             self.registerCBT('Logger','info',"Controller has Recvd Broadcast Frame")
             #self.registerCBT('Logger', 'info', recvd_frame)
-            self.registerCBT('BroadCastForwarder','broadcast',recvd_frame)
+            self.registerCBT('BroadCastForwarder','BroadcastPkt',recvd_frame)
+        elif cbt.action  == "BroadcastData":
+            recvd_frame = cbt.data
+            self.registerCBT('Logger', 'info', "Controller has Recvd Broadcast Data")
+            # self.registerCBT('Logger', 'info', recvd_frame)
+            self.registerCBT('BroadCastForwarder', 'BroadcastData', recvd_frame)
         else:
             recvd_frame = cbt.data
             self.registerCBT('Logger', 'info', "Controller has Recvd Multicast Frame")

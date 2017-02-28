@@ -1,4 +1,4 @@
-import json
+import json,ast
 from controller.framework.ControllerModule import ControllerModule
 
 
@@ -124,21 +124,25 @@ class TincanDispatcher(ControllerModule):
                     iccmsg["msg"]["type"] = "remote"
                     iccmsg["msg"]["interface_name"] = tincan_resp_msg["Request"]["InterfaceName"]
                     if "message_type" in iccmsg["msg"]:
-                        if iccmsg["msg"]["message_type"] == "SendMacDetails":
-                            self.registerCBT('Multicast', 'RECV_PEER_MAC_DETAILS', iccmsg)
-                        elif iccmsg["msg"]["message_type"] == "multicast":
+                        if iccmsg["msg"]["message_type"] == "multicast":
                             dataframe = iccmsg["msg"]["dataframe"]
                             if str(dataframe[24:28]) == "0800":
                                 self.registerCBT('Multicast', 'IP_PACKET', iccmsg["msg"])
                                 self.registerCBT("BaseTopologyManager", "TINCAN_PACKET", iccmsg["msg"])
                             else:
                                 self.registerCBT('Multicast', 'ARP_PACKET', iccmsg["msg"])
-                        elif iccmsg["msg"]["message_type"] == "broadcast":
-                            self.registerCBT('BroadCastController', 'broadcast', iccmsg["msg"])
+                        elif iccmsg["msg"]["message_type"] == "BroadcastPkt":
+                            self.registerCBT('BroadCastController', 'BroadcastPkt', iccmsg["msg"])
+                        elif iccmsg["msg"]["message_type"] == "BroadcastData":
+                            iccmessage = ast.literal_eval(iccmsg["msg"]["dataframe"])
+                            iccmessage["interface_name"] = tincan_resp_msg["Request"]["InterfaceName"]
+                            if iccmessage["message_type"] == "SendMacDetails":
+                                self.registerCBT('Multicast', 'RECV_PEER_MAC_DETAILS', iccmessage)
+                            self.registerCBT('BroadCastController', 'BroadcastData',iccmsg["msg"])
                         else:
                             self.registerCBT('BaseTopologyManager', 'ICC_CONTROL', iccmsg["msg"])
                     else:
-                        self.registerCBT('BroadCastController', 'broadcast', iccmsg["msg"])
+                        self.registerCBT('BroadCastController', 'BroadcastData', iccmsg["msg"])
                 else:
                     iccmsg["interface_name"] = tincan_resp_msg["Request"]["InterfaceName"]
                     self.registerCBT('BaseTopologyManager', 'ICC_CONTROL', iccmsg)
@@ -167,8 +171,8 @@ class TincanDispatcher(ControllerModule):
                     datagram["m_type"] = "ARP"
                     self.registerCBT('Multicast', 'ARP_PACKET', datagram)
                 else:
-                    datagram["message_type"] = "broadcast"
-                    self.registerCBT('BroadCastController', 'broadcast', datagram)
+                    datagram["message_type"] = "BroadcastPkt"
+                    self.registerCBT('BroadCastController', 'BroadcastPkt', datagram)
             else:
                 log = '{0}: unrecognized Data {1} received from {2}. Data:::{3}' \
                     .format(cbt.recipient, cbt.action, cbt.initiator,cbt.data)

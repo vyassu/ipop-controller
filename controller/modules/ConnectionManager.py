@@ -237,10 +237,7 @@ class ConnectionManager(ControllerModule):
 
         #Allow the least node in the network to have the as many connections as required to maintain a fully connected
         #Ring Topology
-        '''
-        if min([current_uid] + successors) == current_uid:
-            return
-        '''
+
         if max([current_uid] + successors) != current_uid:
             while successors[0] < current_uid:
                 successors.append(successors.pop(0))
@@ -248,13 +245,6 @@ class ConnectionManager(ControllerModule):
         # remove all linked successors not within the closest <num_successors> linked nodes
         # remove all unlinked successors not within the closest <num_successors> nodes
         num_linked_successors = 0
-        '''
-        for successor in successors:
-            if self.linked(successor,interface_name):
-                num_linked_successors += 1
-                if num_linked_successors > (2*int(self.CMConfig["num_successors"])):
-                    self.remove_link("successor", successor,interface_name)
-        '''
         i=0
         while i < len(successors)//2:
             if self.linked(successors[i], interface_name):

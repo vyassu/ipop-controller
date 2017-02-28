@@ -36,8 +36,10 @@ class BroadCastForwarder(ControllerModule):
             interface_name = cbt.data.get("interface_name")
             self.ipop_interface_details[interface_name]["peerlist"] = list(sorted(cbt.data['peerlist']))
             self.ipop_interface_details[interface_name]["mac"]      = cbt.data.get("mac")
-        elif cbt.action=='broadcast':
-            self.sendtopeer(cbt.data,"broadcast")
+        elif cbt.action=='BroadcastPkt':
+            self.sendtopeer(cbt.data,"BroadcastPkt")
+        elif cbt.action=='BroadcastData':
+            self.sendtopeer(cbt.data,"BroadcastData")
         elif cbt.action=='multicast':
             self.sendtopeer(cbt.data, "multicast")
 
@@ -114,7 +116,7 @@ class BroadCastForwarder(ControllerModule):
 
           if uid >= max(in_plist) and uid > init_id:
               for peer in plist:
-                    if uid > peer and peer != init_id:
+                    if peer != init_id:
                         self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
                         self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 
@@ -135,7 +137,8 @@ class BroadCastForwarder(ControllerModule):
         self.registerCBT('Logger', 'debug', '@@@ Passing the message to itself @@@')
         messagedetails = {"send": self.send_count, "receive": self.receive_count, "interface_name": interface_name}
         #self.registerCBT('BaseTopologyManager', 'Send_Receive_Details', messagedetails)
-        self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', data)
+        if messagetype != "BroadcastData":
+            self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', data)
 
 
     def terminate(self):

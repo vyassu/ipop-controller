@@ -34,8 +34,8 @@ class Multicast(ControllerModule):
             self.registerCBT('Logger', 'info', "Inside Multicast Module Update Peer MAC details")
             self.registerCBT('Logger', 'info', "Multicast Message:: "+str(cbt.data))
 
-            mac_ip_table  = cbt.data["msg"]["mac_ip_table"]
-            src_uid         = cbt.data["msg"]["src_uid"]
+            mac_ip_table  = cbt.data["mac_ip_table"]
+            src_uid         = cbt.data["src_uid"]
 
             UpdateBTMMacUIDTable = {
                 "uid"               : src_uid,
@@ -106,6 +106,7 @@ class Multicast(ControllerModule):
             # Update BTM MAC-UID-IP Tables
             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', UpdateBTMMacUIDTable)
         else:
+            self.registerCBT('BaseTopologyManager', 'TINCAN_PACKET', cbt.data)
             sendlocalmacdetails = {
                         "interface_name": interface_name,
                         "type"          : "local",
@@ -113,15 +114,15 @@ class Multicast(ControllerModule):
                         "dataframe"     : {
                                 "src_uid"       : current_node_uid,
                                 "src_node_mac"  : interface_details["mac"],
-                                "mac_ip_table": list(interface_details["local_mac_ip_table"]),
+                                "mac_ip_table": interface_details["local_mac_ip_table"],
                                 "message_type"  : "SendMacDetails"
                         }
             }
             self.registerCBT('Logger', 'debug', "Sending Local/Peer MAC details:: "+str(sendlocalmacdetails))
-            self.registerCBT('BroadCastForwarder', 'broadcast', sendlocalmacdetails)
+            self.registerCBT('BroadCastForwarder', 'BroadcastData', sendlocalmacdetails)
 
             # Use BTM TINCAN_PKT to route ARP Reply Message using OVERLAY
-            self.registerCBT('BaseTopologyManager', 'TINCAN_PACKET', cbt.data)
+
 
 
 
