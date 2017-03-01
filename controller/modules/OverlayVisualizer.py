@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import json,time,sys
 from controller.framework.ControllerModule import ControllerModule
-
-if sys.version_info[0] == 2:
-    import urllib2 as uri
+py_ver = sys.version_info[0]
+if py_ver == 3:
+    import urllib.request as urllib2
 else:
-    import urllib as uri
+    import urllib2
 
 
 class OverlayVisualizer(ControllerModule):
@@ -43,9 +43,11 @@ class OverlayVisualizer(ControllerModule):
                     vis_req_msg["name"] = vis_req_msg["uid"]
                     vis_req_msg["uptime"] = int(time.time())
                     message = json.dumps(vis_req_msg).encode("utf8")
-                    req = uri.Request(url=self.vis_address, data=message)
+
+                    req = urllib2.Request(url=self.vis_address, data=message)
                     req.add_header("Content-Type", "application/json")
-                    res = uri.urlopen(req)
+                    res = urllib2.urlopen(req)
+
 
                     if res.getcode() != 200:
                         raise
