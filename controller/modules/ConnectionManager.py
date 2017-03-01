@@ -245,8 +245,13 @@ class ConnectionManager(ControllerModule):
         # remove all linked successors not within the closest <num_successors> linked nodes
         # remove all unlinked successors not within the closest <num_successors> nodes
         num_linked_successors = 0
+        loop_counter = 0
+        if len(successors)%2 == 0:
+            loop_counter = len(successors)/2
+        else:
+            loop_counter = len(successors) / 2 +1
         i=0
-        while i < len(successors)//2:
+        while i < (loop_counter):
             if self.linked(successors[i], interface_name):
                 num_linked_successors += 1
                 if num_linked_successors > (2 * int(self.CMConfig["num_successors"])):

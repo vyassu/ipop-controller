@@ -322,7 +322,6 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
                 self.sendMsg(peer_jid, setup_load, msg_payload)
                 self.log("sent ping to {0}".format(self.uid_jid[peer_uid]), severity=log_level)
         elif cbt.action == "GetXMPPPeer":
-            self.log("Inside Get peer list"+str(self.update_peerlist))
             if self.update_peerlist == True:
 
                 msg = {

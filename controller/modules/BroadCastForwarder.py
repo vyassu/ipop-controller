@@ -122,9 +122,14 @@ class BroadCastForwarder(ControllerModule):
 
           elif uid <= min(in_plist) and uid < init_id:
               for peer in plist:
-                  if uid > peer and in_plist.count(peer) == 0 and peer != init_id:
-                      self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
-                      self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
+                  if init_id >= max(in_plist):
+                      if uid < peer and in_plist.count(peer) == 0 and peer != init_id:
+                          self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
+                          self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
+                  else:
+                      if uid > peer and in_plist.count(peer) == 0 and peer != init_id:
+                          self.registerCBT('Logger', 'debug', '@@@ Spec: BestFitPeers: ' + str(peer))
+                          self.forwardMessage(data_frame, init_id, uid, peer, in_plist, messagetime,datype,interface_name)
 
           else:
               for peer in plist:

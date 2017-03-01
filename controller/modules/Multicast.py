@@ -105,9 +105,12 @@ class Multicast(ControllerModule):
                 self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
             else:
                 self.registerCBT('TincanSender', 'DO_INSERT_DATA_PACKET', cbt.data)
+                self.registerCBT('BroadCastForwarder', 'multicast', cbt.data)
             # Update BTM MAC-UID-IP Tables
             self.registerCBT('BaseTopologyManager', 'TINCAN_CONTROL', UpdateBTMMacUIDTable)
         else:
+            if int(srcmac, 16) != 0:
+                interface_details["local_mac_ip_table"][srcmac] = srcip
             self.registerCBT('BaseTopologyManager', 'TINCAN_PACKET', cbt.data)
             sendlocalmacdetails = {
                         "interface_name": interface_name,

@@ -378,17 +378,11 @@ class BaseTopologyManager(ControllerModule,CFX):
         msg = cbt.data
         if cbt.action == "peer_list":
             interface_name = msg.get("interface_name")
-            try:
-                btmlock.acquire()
-                if self.ipop_interface_details[interface_name]["p2p_state"] !="Connected":
-                    self.ipop_interface_details[interface_name]["discovered_nodes_srv"] = msg.get("peer_list")
-                else:
-                    self.ipop_interface_details[interface_name]["discovered_nodes"]+=msg.get("peer_list")
-                    self.ipop_interface_details[interface_name]["discovered_nodes"]= list(set(self.ipop_interface_details[interface_name]["discovered_nodes"]))
-                btmlock.release()
-            except Exception as err:
-                btmlock.release()
-                self.registerCBT("Logger","error","Exception encountered::"+str(err))
+            if self.ipop_interface_details[interface_name]["p2p_state"] !="Connected":
+                self.ipop_interface_details[interface_name]["discovered_nodes_srv"] = msg.get("peer_list")
+            else:
+                self.ipop_interface_details[interface_name]["discovered_nodes"]+=msg.get("peer_list")
+                self.ipop_interface_details[interface_name]["discovered_nodes"]= list(set(self.ipop_interface_details[interface_name]["discovered_nodes"]))
         elif cbt.action == "forward_msg":
             msg = cbt.data
             self.forward_msg(msg["fwd_type"],msg["dst_uid"],msg["data"],msg["interface_name"])
@@ -398,36 +392,25 @@ class BaseTopologyManager(ControllerModule,CFX):
             msg_type = msg["msg_type"]
             uid = msg.get("uid")
             if msg_type == "add_peer":
-                try:
-                    btmlock.acquire()
-                    self.ipop_interface_details[interface_name]["peers"][uid]={
+                self.ipop_interface_details[interface_name]["peers"][uid]={
                             "uid": uid,
                             "ttl": time.time()+self.CMConfig["InitialLinkTTL"],
                             "con_status": "offline"
-                        }
-                    btmlock.release()
-                except Exception as err:
-                    btmlock.release()
-                    self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                }
+
                 self.registerCBT('Logger', 'debug', "inside add peer **********")
                 #self.ipop_interface_details[interface_name]["peer_uids"][uid] = 1
             elif msg_type == "remove_peer":
                 self.registerCBT('Logger', 'debug',"inside remove peer************")
-                try:
-                    btmlock.acquire()
-                    if uid in list(self.ipop_interface_details[interface_name]["peers"].keys()):
-                        del  self.ipop_interface_details[interface_name]["peers"][uid]
-                    if uid in self.ipop_interface_details[interface_name]["online_peer_uid"]:
-                        self.ipop_interface_details[interface_name]["online_peer_uid"].remove(msg["uid"])
-                    if uid in list(self.ipop_interface_details[interface_name]["uid_mac_table"].keys()):
-                        maclist =  list(self.ipop_interface_details[interface_name]["uid_mac_table"][uid])
-                        for mac in maclist:
-                            del self.ipop_interface_details[interface_name]["mac_uid_table"][mac]
-                        del self.ipop_interface_details[interface_name]["uid_mac_table"][uid]
-                    btmlock.release()
-                except Exception as err:
-                    btmlock.release()
-                    self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                if uid in list(self.ipop_interface_details[interface_name]["peers"].keys()):
+                    del  self.ipop_interface_details[interface_name]["peers"][uid]
+                if uid in self.ipop_interface_details[interface_name]["online_peer_uid"]:
+                    self.ipop_interface_details[interface_name]["online_peer_uid"].remove(msg["uid"])
+                if uid in list(self.ipop_interface_details[interface_name]["uid_mac_table"].keys()):
+                    maclist =  list(self.ipop_interface_details[interface_name]["uid_mac_table"][uid])
+                    for mac in maclist:
+                        del self.ipop_interface_details[interface_name]["mac_uid_table"][mac]
+                    del self.ipop_interface_details[interface_name]["uid_mac_table"][uid]
 
             else:
                 log = '{0}: unrecognized CBT message {1} received from {2}.Data:: {3}' \
@@ -458,17 +441,12 @@ class BaseTopologyManager(ControllerModule,CFX):
             # handle ping message
             elif msg_type == "ping":
                 # add source node to the list of discovered nodes
-                try:
-                    btmlock.acquire()
-                    interface_details["discovered_nodes"].append(msg["uid"])
-                    interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
+                interface_details["discovered_nodes"].append(msg["uid"])
+                interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
 
-                    if interface_details["p2p_state"] == "searching":
-                        interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
-                    btmlock.release()
-                except Exception as err:
-                    btmlock.release()
-                    self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                if interface_details["p2p_state"] == "searching":
+                    interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
+
                 # reply with a ping response message
                 self.send_msg_srv("ping_resp", msg["uid"], interface_details["ipop_state"]["_uid"],interface_name)
                 log = "recv ping: {0}".format(msg["uid"])
@@ -477,17 +455,11 @@ class BaseTopologyManager(ControllerModule,CFX):
             # handle ping response
             elif msg_type == "ping_resp":
                 # add source node to the list of discovered nodes
-                try:
-                    btmlock.acquire()
-                    interface_details["discovered_nodes"].append(msg["uid"])
-                    interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
+                interface_details["discovered_nodes"].append(msg["uid"])
+                interface_details["discovered_nodes"] = list(set(interface_details["discovered_nodes"]))
 
-                    if interface_details["p2p_state"] == "searching":
-                        interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
-                    btmlock.release()
-                except Exception as err:
-                    btmlock.release()
-                    self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                if interface_details["p2p_state"] == "searching":
+                    interface_details["discovered_nodes_srv"] = interface_details["discovered_nodes"]
                 log = "recv ping_resp from {0}".format(msg["uid"])
                 self.registerCBT('Logger', 'debug', log)
 
@@ -514,6 +486,8 @@ class BaseTopologyManager(ControllerModule,CFX):
                 if msg["_uid"] not in interface_details["uid_mac_table"].keys():
                     interface_details["uid_mac_table"][msg["_uid"]] = [msg["mac"]]
                 self.registerCBT("Multicast","getlocalmacaddress",{"interface_name":interface_name, "localmac": msg["mac"]})
+                self.registerCBT("Logger","info","Local Node Info UID:{0} MAC:{1} IP4: {2}".format(msg["_uid"],\
+                    msg["mac"],msg["_ip4"]))
             # update peer list
             elif msg_type == "peer_state":
                 uid = msg["uid"]
@@ -533,40 +507,24 @@ class BaseTopologyManager(ControllerModule,CFX):
                         if uid not in interface_details["online_peer_uid"]:
                             interface_details["online_peer_uid"].append(uid)
                     elif "unknown" == msg["status"]:
-                        try:
-                            btmlock.acquire()
-                            del interface_details["peers"][uid]
-                            if uid in interface_details["online_peer_uid"]:
+                        del interface_details["peers"][uid]
+                        if uid in interface_details["online_peer_uid"]:
                                 interface_details["online_peer_uid"].remove(msg["uid"])
-                            if uid in list(interface_details["uid_mac_table"].keys()):
-                                mac_list = list(interface_details["uid_mac_table"][uid])
-                                for mac in mac_list:
-                                    del interface_details["mac_uid_table"][mac]
-                                del interface_details["uid_mac_table"][uid]
-                            btmlock.release()
-                        except Exception as err:
-                            btmlock.release()
-                            self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                        if uid in list(interface_details["uid_mac_table"].keys()):
+                            mac_list = list(interface_details["uid_mac_table"][uid])
+                            for mac in mac_list:
+                                del interface_details["mac_uid_table"][mac]
+                            del interface_details["uid_mac_table"][uid]
                         return
                     else:
-                        try:
-                            btmlock.acquire()
-                            if msg["uid"] in interface_details["online_peer_uid"]:
-                                interface_details["online_peer_uid"].remove(uid)
-                            btmlock.release()
-                        except Exception as err:
-                            btmlock.release()
-                            self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
-                    try:
-                        # update peer state
-                        btmlock.acquire()
-                        interface_details["peers"][uid]                 = msg
-                        interface_details["peers"][uid]["ttl"]          = ttl
-                        interface_details["peers"][uid]["con_status"]   = msg["status"]
-                        btmlock.release()
-                    except Exception as err:
-                        btmlock.release()
-                        self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                        if msg["uid"] in interface_details["online_peer_uid"]:
+                            interface_details["online_peer_uid"].remove(uid)
+
+                    # update peer state
+                    interface_details["peers"][uid]                 = msg
+                    interface_details["peers"][uid]["ttl"]          = ttl
+                    interface_details["peers"][uid]["con_status"]   = msg["status"]
+
 
                     update_link_attributes ={
                         "uid": uid,
@@ -601,9 +559,10 @@ class BaseTopologyManager(ControllerModule,CFX):
                 if uid not in interface_details["online_peer_uid"] and uid !=localuid:
                     nextuid = self.getnearestnode(uid,interface_name)
                     nextnodemac = interface_details["uid_mac_table"][nextuid][0]
+                    '''
                     for destmac in list(msg["mac_ip_table"].keys()):
-                        self.registerCBT('Logger', 'info', 'UpdateMACUIDMessage:::' + str(interface_details["mac_uid_table"]))
-                        '''
+                        self.registerCBT('Logger', 'info', 'MAC_UID Table:::' + str(interface_details["mac_uid_table"]))
+
                         if destmac not in list(interface_details["mac_uid_table"].keys()):
                             message = {
                                 "interface_name": interface_name,
@@ -620,7 +579,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                                     "destmac": [destmac]
                                 }
                                 self.registerCBT("TincanSender", "DO_INSERT_ROUTING_RULES", message)
-                        '''
+                    '''
 
                 for mac, ip in msg["mac_ip_table"].items():
                     if mac not in interface_details["uid_mac_table"][uid]:
@@ -653,17 +612,11 @@ class BaseTopologyManager(ControllerModule,CFX):
             interface_name = msg["interface_name"]
             # advertisement of nearby nodes
             if msg_type == "advertise":
-                try:
-                    btmlock.acquire()
-                    self.ipop_interface_details[interface_name]["discovered_nodes"] \
+                self.ipop_interface_details[interface_name]["discovered_nodes"] \
                             = list(set(self.ipop_interface_details[interface_name]["discovered_nodes"] + msg["peer_list"]))
-                    localuid = self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]
-                    if localuid in self.ipop_interface_details[interface_name]["discovered_nodes"]:
-                        self.ipop_interface_details[interface_name]["discovered_nodes"].remove(localuid)
-                    btmlock.release()
-                except Exception as err:
-                    btmlock.release()
-                    self.registerCBT("Logger", "error", "Exception encountered::" + str(err))
+                localuid = self.ipop_interface_details[interface_name]["ipop_state"]["_uid"]
+                if localuid in self.ipop_interface_details[interface_name]["discovered_nodes"]:
+                    self.ipop_interface_details[interface_name]["discovered_nodes"].remove(localuid)
 
                 log = "recv advertisement: {0}".format(msg["src_uid"])
                 self.registerCBT('Logger', 'info', log)
@@ -946,11 +899,8 @@ class BaseTopologyManager(ControllerModule,CFX):
                 for interface_name in self.ipop_interface_details.keys():
                     # manage topology
                     try:
-                        btmlock.acquire()
                         self.manage_topology(interface_name)
-                        btmlock.release()
                     except Exception as error:
-                        btmlock.release()
                         self.registerCBT('Logger', 'error', "Exception in MT BTM timer: " + str(error))
 
 
@@ -959,9 +909,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                         msg = {"interface_name": interface_name, "uid": ""}
                         self.registerCBT('TincanSender', 'DO_GET_STATE', msg)
 
-                    btmlock.acquire()
                     peer_list = list(self.ipop_interface_details[interface_name]["peers"].keys())
-                    btmlock.release()
 
                     for uid in peer_list:
                         message  = {"interface_name": interface_name, "uid": uid}
@@ -973,11 +921,8 @@ class BaseTopologyManager(ControllerModule,CFX):
             if self.interval_counter % self.CMConfig["PeerPingInterval"] == 0:
                 # ping to repair potential network partitions
                 try:
-                    btmlock.acquire()
                     self.ping()
-                    btmlock.release()
                 except Exception as error_msg:
-                    btmlock.release()
                     self.registerCBT('Logger', 'error', "Exception in PING BTM timer:" + str(error_msg))
 
         except Exception as err:
