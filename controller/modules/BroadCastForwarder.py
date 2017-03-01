@@ -15,7 +15,7 @@ class BroadCastForwarder(ControllerModule):
             self.ipop_interface_details[interface_name] = {}
             self.ipop_interface_details[interface_name]["uid"]       = self.tincanparams[k]["uid"]
             self.ipop_interface_details[interface_name]["mac"]       = ""
-            self.ipop_interface_details[interface_name]["peer_list"] = []
+            self.ipop_interface_details[interface_name]["peerlist"] = []
         self.tincanparams = None
         self.prevtimestamp = []
         self.send_count = 0
