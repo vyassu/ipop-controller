@@ -579,7 +579,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                                     "destmac": [destmac]
                                 }
                                 self.registerCBT("TincanSender", "DO_INSERT_ROUTING_RULES", message)
-                    
+
                 for mac, ip in msg["mac_ip_table"].items():
                     if mac not in interface_details["uid_mac_table"][uid]:
                         interface_details["uid_mac_table"][uid].append(mac)
