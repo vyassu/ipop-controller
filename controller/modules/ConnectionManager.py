@@ -44,10 +44,8 @@ class ConnectionManager(ControllerModule):
     def respond_connection(self,con_type,data,interface_name,uid,ttl):
 
         #changes done as part of release 17.0
-        #self.create_connection(uid, data)
-        ##index = self.ipop_interface_details[interface_name]["index"]
-        # send con_ack message
-        self.connection_details[interface_name][con_type][uid] = {"ttl" : ttl, "status": "con_resp"}
+        peer_mac = data.pop("peer_mac")
+        self.connection_details[interface_name][con_type][uid] = {"ttl" : ttl, "status": "con_resp","mac": peer_mac}
         self.send_msg_srv("con_ack", uid, json.dumps(data),interface_name)
         log = "sent con_ack to {0}".format(uid)
         self.registerCBT('Logger','debug', log)
@@ -62,6 +60,8 @@ class ConnectionManager(ControllerModule):
                 msg = {"interface_name": interface_name, "uid": uid, "MAC": mac}
                 self.registerCBT('TincanSender', 'DO_TRIM_LINK', msg)
                 self.connection_details[interface_name][con_type].pop(uid)
+                message = {"uid": uid, "interface_name": interface_name, "msg_type": "remove_peer"}
+                self.registerCBT("BaseTopologyManager", "UpdateConnectionDetails", message)
 
         log = "removed connection: {0}".format(uid)
         self.registerCBT('Logger', 'info', log)
