@@ -200,6 +200,8 @@ class BaseTopologyManager(ControllerModule,CFX):
             elif peer[uid]["con_status"] == "offline":
                 if "connretrycount" not in peer[uid].keys():
                         peer[uid]["connretrycount"] = 0
+                        response_msg["ttl"] = ttl
+                        self.registerCBT("ConnectionManager", "respond_connection", response_msg)
                 else:
                     if peer[uid]["connretrycount"] < self.maxretries:
                         peer[uid]["connretrycount"] += 1
@@ -540,6 +542,9 @@ class BaseTopologyManager(ControllerModule,CFX):
                 if uid in interface_details["peers"]:
                     # preserve ttl and con_status attributes
                     ttl = interface_details["peers"][uid]["ttl"]
+                    connretry = 0
+                    if "connretrycount" in interface_details["peers"][uid].keys():
+                        connretry = interface_details["peers"][uid]["connretrycount"]
                     # update ttl attribute
                     if "online" == msg["status"]:
                         ttl = time.time() + self.CMConfig["LinkPulse"]
@@ -563,7 +568,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     interface_details["peers"][uid]                 = msg
                     interface_details["peers"][uid]["ttl"]          = ttl
                     interface_details["peers"][uid]["con_status"]   = msg["status"]
-
+                    interface_details["peers"][uid]["connretrycount"] = connretry
 
                     update_link_attributes ={
                         "uid": uid,
