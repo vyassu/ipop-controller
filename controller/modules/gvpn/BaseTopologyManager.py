@@ -565,7 +565,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                             interface_details["online_peer_uid"].remove(uid)
 
                     # update peer state
-                    interface_details["peers"][uid]                 = msg
+                    interface_details["peers"][uid].update(msg)
                     interface_details["peers"][uid]["ttl"]          = ttl
                     interface_details["peers"][uid]["con_status"]   = msg["status"]
                     interface_details["peers"][uid]["connretrycount"] = connretry

@@ -86,7 +86,7 @@ class ConnectionManager(ControllerModule):
         successors = list(links["successor"].keys())
         for uid in successors:
             # Check if there exists a link
-            if self.linked(uid,interface_name):
+            #if self.linked(uid,interface_name):
                 # check whether the time to link has expired
                 if time.time() > links["successor"][uid]["ttl"]:
                     self.remove_connection(uid, interface_name)
