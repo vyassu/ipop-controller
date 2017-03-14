@@ -129,11 +129,12 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
                         node_uid = self.jid_uid[ele][0]
                         del self.jid_uid[ele]
                         del self.xmpp_peers[ele]
-                        del self.uid_jid[node_uid]
-                        self.update_peerlist = True
-                        self.registerCBT("Logger","info","{0} has been deleted from the roster.".format(node_uid))
-                        self.registerCBT("ConnectionManager","remove_connection",\
-                                         {"interface_name":self.interface_name,"uid":node_uid})
+                        if node_uid in self.uid_jid.keys():
+                            del self.uid_jid[node_uid]
+                            self.update_peerlist = True
+                            self.registerCBT("Logger","info","{0} has been deleted from the roster.".format(node_uid))
+                            self.registerCBT("ConnectionManager","remove_connection",\
+                                             {"interface_name":self.interface_name,"uid":node_uid})
 
     # Remove the Offline Peer from the internal dictionary
     def removepeerjid(self,message):
@@ -142,11 +143,12 @@ class XmppClient(ControllerModule, sleekxmpp.ClientXMPP):
         del self.xmpp_peers[peerjid]
         uid  = self.jid_uid[peerjid][0]
         del self.jid_uid[peerjid]
-        del self.uid_jid[uid]
-        self.update_peerlist = True
-        self.registerCBT("ConnectionManager", "remove_connection", \
-                         {"interface_name": self.interface_name, "uid": uid})
-        self.log("Removed Peer JID: {0} UID: {1} from the JID-UID and UID-JID Table".format(peerjid,uid))
+        if uid in self.uid_jid.keys():
+            del self.uid_jid[uid]
+            self.update_peerlist = True
+            self.registerCBT("ConnectionManager", "remove_connection", \
+                             {"interface_name": self.interface_name, "uid": uid})
+            self.log("Removed Peer JID: {0} UID: {1} from the JID-UID and UID-JID Table".format(peerjid,uid))
 
 
 
