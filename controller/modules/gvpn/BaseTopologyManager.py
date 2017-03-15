@@ -586,7 +586,7 @@ class BaseTopologyManager(ControllerModule,CFX):
             elif msg_type == "con_ack":
                 self.registerCBT('Logger', 'debug',
                                              "Received CAS from Tincan for UID {0}".format(msg["uid"]))
-                interface_details["ipop_state"]["cas"] = msg["data"]["cas"]
+                interface_details["cas"] = msg["data"]["cas"]
                 self.add_inbound(msg["data"]["con_type"], msg["uid"], msg["data"], interface_name)
                 #interface_details["peer_uids"][msg["uid"]] = 1
 
@@ -635,7 +635,7 @@ class BaseTopologyManager(ControllerModule,CFX):
 
 
             elif msg_type == "GetOnlinePeerList":
-                self.registerCBT('Logger', 'info', 'Control inside BaseTopology Manager peerlist code')
+                self.registerCBT('Logger', 'debug', 'Control inside BaseTopology Manager peerlist code')
                 interface_name = cbt.data["interface_name"]
                 interface_details = self.ipop_interface_details[interface_name]
 
@@ -717,7 +717,7 @@ class BaseTopologyManager(ControllerModule,CFX):
                     "interface_name": interface_name,
                     "uid": self.ipop_interface_details[interface_name]["ipop_state"]["_uid"],
                     "ip4": self.ipop_interface_details[interface_name]["ipop_state"]["_ip4"],
-                    #"ip6": self.ipop_interface_details[interface_name]["ipop_state"]["_ip6"],
+                    "GeoIP": self.getGeoIP(self.ipop_interface_details[interface_name]["cas"]),
                     "mac": self.ipop_interface_details[interface_name]["mac"],
                     "state": self.ipop_interface_details[interface_name]["p2p_state"],
                     "macuidmapping": self.ipop_interface_details[interface_name]["uid_mac_table"],
@@ -736,11 +736,6 @@ class BaseTopologyManager(ControllerModule,CFX):
             # ignore packets when not connected to the overlay
             if interface_details["p2p_state"] != "connected":
                 return
-
-            # extract the source uid and destination uid
-            # XXX src_uid and dst_uid should be obtained from the header, but
-            # sometimes the dst_uid is the null uid
-            # FIXME sometimes an irrelevant ip4 address obtained
 
             if m_type=="ARP":
                 maclen = int(data[36:38], 16)
@@ -765,9 +760,17 @@ class BaseTopologyManager(ControllerModule,CFX):
                 dst_uid = ip4_uid_table[dst_ip]
             elif destmac in interface_details["mac_uid_table"].keys():
                 dst_uid = interface_details["mac_uid_table"][destmac]
+            elif destmac == "FFFFFFFFFFFF":
+                datapacket = {
+                        "dataframe": data,
+                        "interface_name": interface_name,
+                        "type": "local"
+                }
+                self.registerCBT("BroadCastForwarder","BroadcastPkt",datapacket)
+                return
             else:
                 log = "recv illegal tincan_packet: src={0} dst={1}".format(srcmac, destmac)
-                self.registerCBT('Logger', 'error', log)
+                self.registerCBT('Logger', 'info', log)
                 return
 
             # Message routing to one of the local node attached to this UID
@@ -979,6 +982,13 @@ class BaseTopologyManager(ControllerModule,CFX):
 
         except Exception as err:
             self.registerCBT('Logger', 'error', "Exception in BTM timer:" + str(err))
+
+    def getGeoIP(self,cas):
+        caslist = cas.split("udp:")
+        for casele in caslist:
+            if casele.find("stun") !=-1:
+                return casele.split(":")[0]
+        return " "
 
     def terminate(self):
         pass
